@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mondor Commander</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <style>
 /* ═══════════════ DOS AESTHETICS ═══════════════ */
 @font-face {
@@ -68,6 +70,17 @@ body {
   font-weight: bold;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+#safe-mode-badge {
+  position: absolute;
+  right: 12px;
+  color: var(--yellow);
+  font-size: 12px;
+  cursor: default;
 }
 
 /* ═══════════════ MAIN CONTENT ═══════════════ */
@@ -611,6 +624,12 @@ body {
   white-space: pre;
   tab-size: 4;
 }
+.viewer-content pre code.hljs {
+  background: transparent;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+}
 
 .viewer-meta {
   color: var(--text-dim);
@@ -1135,6 +1154,16 @@ body {
 .tag-badge.tag-keep { color: var(--gray); border-color: var(--gray); }
 .tag-badge.tag-skip { color: var(--text-dim); border-color: var(--text-dim); }
 
+/* ═══════════════ RESPONSIVE LAYOUT ═══════════════ */
+@media (max-width: 900px) {
+  #browser-view { flex-direction: column !important; }
+  .panel-border { width: 100% !important; height: 1px !important; }
+  #fkeybar { flex-wrap: wrap; overflow-x: auto; }
+  .fkey { min-width: 60px; flex: 0 0 auto; }
+  .sync-row .sync-size, .sync-row .sync-size-right, .sync-row .sync-action { display: none; }
+  .sync-row .sync-path { min-width: 0; }
+}
+
 /* ═══════════════ SCROLLBAR ═══════════════ */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-dark); }
@@ -1144,7 +1173,7 @@ body {
 </head>
 <body>
 <div id="app">
-  <div id="header">┤ Mondor Commander ├</div>
+  <div id="header"><span>┤ Mondor Commander ├</span><span id="safe-mode-badge" title="MC opera in modalità read-only. Nessuna operazione modifica i tuoi file.">🔒 SAFE MODE — READ ONLY</span></div>
   <div id="main">
     <!-- Progress overlay -->
     <div id="progress-overlay">
@@ -2453,7 +2482,19 @@ async function openFileViewer(side, filePath) {
     } else if (data.error) {
       $('viewer-content').innerHTML = `<pre style="color:var(--red)">${esc(data.error)}</pre>`;
     } else {
-      $('viewer-content').innerHTML = `<pre>${escHtml(data.content)}</pre>`;
+      const ext = filePath.split('.').pop().toLowerCase();
+      const langMap = { js:'javascript', ts:'typescript', py:'python', rb:'ruby', sh:'bash', yml:'yaml', yaml:'yaml', json:'json', html:'xml', xml:'xml', css:'css', md:'markdown', sql:'sql', go:'go', rs:'rust', java:'java', c:'c', cpp:'cpp', h:'c', hpp:'cpp' };
+      const lang = langMap[ext] || '';
+      const codeEl = document.createElement('pre');
+      const codeInner = document.createElement('code');
+      codeInner.textContent = data.content;
+      if (lang) codeInner.className = `language-${lang}`;
+      codeEl.appendChild(codeInner);
+      $('viewer-content').innerHTML = '';
+      $('viewer-content').appendChild(codeEl);
+      if (typeof hljs !== 'undefined') {
+        try { hljs.highlightElement(codeInner); } catch(e) { /* fallback to plain */ }
+      }
     }
 
     $('viewer-meta').textContent = data.meta ? `${data.meta.sizeHuman} | Modified: ${new Date(data.meta.modified).toLocaleString()} | ${data.meta.permissions}` : '';
