@@ -6,7 +6,12 @@
 <title>Mondor Commander</title>
 <style>
 /* ═══════════════ DOS AESTHETICS ═══════════════ */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap');
+@font-face {
+  font-family: 'Perfect DOS VGA 437';
+  src: url('/fonts/Perfect DOS VGA 437.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -35,7 +40,7 @@ html, body {
   width: 100%; height: 100%;
   background: var(--bg-dark);
   color: var(--text);
-  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-family: 'Perfect DOS VGA 437', 'Courier New', monospace;
   font-size: 13px;
   line-height: 1.3;
   overflow: hidden;
@@ -461,7 +466,7 @@ html, body {
 
 .viewer-content pre {
   color: var(--text);
-  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-family: 'Perfect DOS VGA 437', 'Courier New', monospace;
   font-size: 12px;
   white-space: pre;
   tab-size: 4;
@@ -545,7 +550,7 @@ html, body {
   color: var(--text);
   border: 1px solid var(--border);
   padding: 2px 8px;
-  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  font-family: 'Perfect DOS VGA 437', 'Courier New', monospace;
   font-size: 13px;
   outline: none;
   width: 300px;
@@ -581,6 +586,297 @@ html, body {
 
 /* ═══════════════ SINGLE MODE ═══════════════ */
 .single-mode .panel { max-width: 800px; margin: 0 auto; }
+
+/* ═══════════════ MCP VIEW (F2) ═══════════════ */
+#mcp-view {
+  display: none;
+  flex: 1;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+.mcp-server-panel {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.mcp-panel-header {
+  background: var(--bg);
+  color: var(--header);
+  padding: 4px 8px;
+  font-weight: bold;
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+
+.mcp-server-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.mcp-server-item {
+  padding: 4px 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(0,170,170,0.2);
+}
+.mcp-server-item:hover { background: rgba(0,170,170,0.15); }
+.mcp-server-item.selected { background: var(--selected-bg); color: var(--selected-text); }
+.mcp-server-item.selected .mcp-srv-status { color: var(--selected-text); }
+
+.mcp-srv-name { flex: 1; }
+.mcp-srv-status { font-size: 11px; margin-left: 8px; }
+.mcp-srv-status.connected { color: var(--green); }
+.mcp-srv-status.stopped { color: var(--gray); }
+.mcp-srv-status.starting { color: var(--yellow); }
+.mcp-srv-status.error { color: var(--red); }
+
+.mcp-server-actions {
+  padding: 4px 8px;
+  display: flex;
+  gap: 4px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.mcp-btn {
+  padding: 2px 8px;
+  background: var(--fkey-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+.mcp-btn:hover { background: var(--selected-bg); color: var(--selected-text); }
+.mcp-btn:disabled { opacity: 0.4; cursor: default; }
+
+.mcp-tool-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.mcp-tool-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.mcp-tool-item {
+  padding: 4px 8px;
+  border: 1px solid rgba(0,170,170,0.2);
+  margin-bottom: 2px;
+  cursor: pointer;
+}
+.mcp-tool-item:hover { background: rgba(0,170,170,0.15); }
+
+.mcp-tool-name { color: var(--header); font-weight: bold; font-size: 12px; }
+.mcp-tool-desc { color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+
+.mcp-tool-result {
+  padding: 8px;
+  border-top: 1px solid var(--border);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.mcp-tool-result pre {
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ═══════════════ MCP MODAL DIALOG ═══════════════ */
+.mcp-modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 250;
+  align-items: center;
+  justify-content: center;
+}
+.mcp-modal.visible { display: flex; }
+
+.mcp-modal-box {
+  background: var(--bg);
+  border: 2px solid var(--border);
+  padding: 16px;
+  min-width: 400px;
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.mcp-modal-title {
+  color: var(--header);
+  font-weight: bold;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.mcp-form-group {
+  margin-bottom: 8px;
+}
+
+.mcp-form-label {
+  color: var(--text);
+  font-size: 12px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.mcp-form-input {
+  width: 100%;
+  background: var(--fkey-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.mcp-form-input:focus { border-color: var(--header); }
+
+.mcp-form-checkbox {
+  margin-right: 4px;
+}
+
+.mcp-modal-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+/* ═══════════════ CHAT VIEW (F4) ═══════════════ */
+#chat-view {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.chat-header {
+  background: var(--bg);
+  color: var(--text-dim);
+  padding: 4px 12px;
+  font-size: 11px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+
+.chat-msg {
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.chat-msg-role {
+  font-weight: bold;
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.chat-msg-content {
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-msg.user .chat-msg-role { color: #00FFFF; }
+.chat-msg.user .chat-msg-content { color: #00FFFF; }
+.chat-msg.assistant .chat-msg-role { color: var(--white); }
+.chat-msg.assistant .chat-msg-content { color: var(--white); }
+.chat-msg.tool .chat-msg-role { color: var(--yellow); }
+.chat-msg.tool .chat-msg-content { color: var(--yellow); }
+.chat-msg.error .chat-msg-role { color: var(--red); }
+.chat-msg.error .chat-msg-content { color: var(--red); }
+
+.chat-tool-block {
+  border: 1px solid var(--border);
+  margin: 4px 0;
+  font-size: 12px;
+}
+
+.chat-tool-header {
+  padding: 2px 8px;
+  background: rgba(0,170,170,0.15);
+  cursor: pointer;
+  color: var(--yellow);
+}
+.chat-tool-header:hover { background: rgba(0,170,170,0.25); }
+
+.chat-tool-body {
+  padding: 4px 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.chat-tool-body.expanded { display: block; }
+
+.chat-thinking {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 12px;
+  padding: 4px 0;
+}
+
+.chat-input-area {
+  border-top: 1px solid var(--border);
+  padding: 4px 8px;
+  display: flex;
+  gap: 4px;
+}
+
+.chat-input {
+  flex: 1;
+  background: var(--fkey-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  resize: none;
+  min-height: 24px;
+  max-height: 120px;
+}
+
+.chat-input:focus { border-color: var(--header); }
+
+.chat-send-btn {
+  padding: 4px 12px;
+  background: var(--fkey-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  align-self: flex-end;
+}
+.chat-send-btn:hover { background: var(--selected-bg); color: var(--selected-text); }
 
 /* ═══════════════ SCROLLBAR ═══════════════ */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -642,6 +938,38 @@ html, body {
       </div>
     </div>
 
+    <!-- MCP View (F2) -->
+    <div id="mcp-view">
+      <div class="mcp-server-panel">
+        <div class="mcp-panel-header">┤ MCP Servers ├</div>
+        <div class="mcp-server-list" id="mcp-server-list"></div>
+        <div class="mcp-server-actions">
+          <button class="mcp-btn" id="mcp-start-btn">Start</button>
+          <button class="mcp-btn" id="mcp-stop-btn">Stop</button>
+          <button class="mcp-btn" id="mcp-add-btn">Add</button>
+          <button class="mcp-btn" id="mcp-remove-btn">Remove</button>
+        </div>
+      </div>
+      <div class="mcp-tool-panel">
+        <div class="mcp-panel-header" id="mcp-tool-header">┤ Tools ├</div>
+        <div class="mcp-tool-list" id="mcp-tool-list"></div>
+        <div class="mcp-tool-result" id="mcp-tool-result" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Chat View (F4) -->
+    <div id="chat-view">
+      <div class="chat-header">
+        <span id="chat-llm-info">LLM: not configured</span>
+        <span><span id="chat-tool-count">0</span> tools available | <span class="mcp-btn" id="chat-clear-btn" style="font-size:11px;padding:0 4px">Clear</span></span>
+      </div>
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-input-area">
+        <textarea class="chat-input" id="chat-input" rows="1" placeholder="Type a message... (Enter to send, Shift+Enter for newline)"></textarea>
+        <button class="chat-send-btn" id="chat-send-btn">Send</button>
+      </div>
+    </div>
+
     <!-- Duplicates View -->
     <div id="dupes-view">
       <div class="dupes-summary" id="dupes-summary"></div>
@@ -668,7 +996,9 @@ html, body {
 
   <div id="fkeybar">
     <div class="fkey" data-key="F1"><span class="fkey-num">1</span><span class="fkey-label">Browse</span></div>
+    <div class="fkey" data-key="F2"><span class="fkey-num">2</span><span class="fkey-label">MCP</span></div>
     <div class="fkey" data-key="F3"><span class="fkey-num">3</span><span class="fkey-label">View</span></div>
+    <div class="fkey" data-key="F4"><span class="fkey-num">4</span><span class="fkey-label">Chat</span></div>
     <div class="fkey" data-key="F5"><span class="fkey-num">5</span><span class="fkey-label">Compare</span></div>
     <div class="fkey" data-key="F6"><span class="fkey-num">6</span><span class="fkey-label">Space</span></div>
     <div class="fkey" data-key="F7"><span class="fkey-num">7</span><span class="fkey-label">Dupes</span></div>
@@ -680,6 +1010,48 @@ html, body {
 <div id="search-bar">
   <span id="search-label">Search:</span>
   <input type="text" id="search-input" autocomplete="off">
+</div>
+
+<!-- MCP Add Server Dialog -->
+<div class="mcp-modal" id="mcp-add-dialog">
+  <div class="mcp-modal-box">
+    <div class="mcp-modal-title">┤ Add MCP Server ├</div>
+    <div class="mcp-form-group">
+      <label class="mcp-form-label">Name</label>
+      <input class="mcp-form-input" id="mcp-add-name" placeholder="my-server">
+    </div>
+    <div class="mcp-form-group">
+      <label class="mcp-form-label">Command</label>
+      <input class="mcp-form-input" id="mcp-add-command" placeholder="npx">
+    </div>
+    <div class="mcp-form-group">
+      <label class="mcp-form-label">Arguments (comma-separated)</label>
+      <input class="mcp-form-input" id="mcp-add-args" placeholder="-y, @modelcontextprotocol/server-filesystem, /tmp">
+    </div>
+    <div class="mcp-form-group">
+      <label class="mcp-form-label">Environment (KEY=VALUE, comma-separated)</label>
+      <input class="mcp-form-input" id="mcp-add-env" placeholder="NODE_ENV=production">
+    </div>
+    <div class="mcp-form-group">
+      <label><input type="checkbox" class="mcp-form-checkbox" id="mcp-add-autostart"> Auto-start</label>
+    </div>
+    <div class="mcp-modal-actions">
+      <button class="mcp-btn" id="mcp-add-ok">Add</button>
+      <button class="mcp-btn" id="mcp-add-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- MCP Invoke Tool Dialog -->
+<div class="mcp-modal" id="mcp-invoke-dialog">
+  <div class="mcp-modal-box">
+    <div class="mcp-modal-title" id="mcp-invoke-title">┤ Invoke Tool ├</div>
+    <div id="mcp-invoke-form"></div>
+    <div class="mcp-modal-actions">
+      <button class="mcp-btn" id="mcp-invoke-ok">Invoke</button>
+      <button class="mcp-btn" id="mcp-invoke-cancel">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <!-- Quit dialog -->
@@ -703,7 +1075,7 @@ html, body {
 const state = {
   status: 'scanning',
   dualMode: false,
-  currentView: 'browser', // browser | compare | space | dupes
+  currentView: 'browser', // browser | compare | space | dupes | mcp | chat
   focusedPanel: 'left',   // left | right
   leftPath: '',
   rightPath: '',
@@ -724,6 +1096,16 @@ const state = {
   treemapDrillPath: null,
   treemapRects: [],
   dupeSortBy: 'size', // size | count
+  // MCP state
+  mcpEnabled: false,
+  mcpServers: [],
+  mcpSelectedServer: null,
+  mcpTools: [],
+  mcpInvokeTool: null, // tool being invoked
+  // Chat state
+  chatMessages: [], // { role, content, toolName, args, result, collapsed }
+  chatWaiting: false,
+  chatSessionId: 'default',
 };
 
 // ─── DOM refs ───
@@ -733,6 +1115,8 @@ const browserView = $('browser-view');
 const compareView = $('compare-view');
 const spaceView = $('space-view');
 const dupesView = $('dupes-view');
+const mcpView = $('mcp-view');
+const chatView = $('chat-view');
 const fileViewer = $('file-viewer');
 const searchBar = $('search-bar');
 const searchInput = $('search-input');
@@ -767,6 +1151,25 @@ function handleWSMessage(msg) {
       break;
     case 'error':
       $('progress-status').textContent = `Error: ${msg.message}`;
+      break;
+
+    // MCP messages
+    case 'mcp:server:status':
+      handleMcpServerStatus(msg);
+      break;
+    case 'mcp:tools:updated':
+      handleMcpToolsUpdated(msg);
+      break;
+
+    // Chat messages
+    case 'chat:tool_call':
+      handleChatToolCall(msg);
+      break;
+    case 'chat:tool_result':
+      handleChatToolResult(msg);
+      break;
+    case 'chat:done':
+      handleChatDone(msg);
       break;
   }
 }
@@ -834,6 +1237,24 @@ async function initApp() {
       document.querySelector('[data-key="F5"]').classList.add('disabled');
     }
 
+    // Check if MCP is available
+    try {
+      const mcpRes = await fetch('/api/mcp/servers');
+      if (mcpRes.ok) {
+        state.mcpEnabled = true;
+      }
+    } catch(e) {
+      state.mcpEnabled = false;
+    }
+
+    // Disable MCP/Chat F-keys if not available
+    if (!state.mcpEnabled) {
+      const f2 = document.querySelector('[data-key="F2"]');
+      const f4 = document.querySelector('[data-key="F4"]');
+      if (f2) f2.classList.add('disabled');
+      if (f4) f4.classList.add('disabled');
+    }
+
     updateStatusBar();
     showView('browser');
     await loadBrowseData('left', '');
@@ -856,6 +1277,8 @@ function showView(view) {
   compareView.style.display = 'none';
   spaceView.style.display = 'none';
   dupesView.style.display = 'none';
+  mcpView.style.display = 'none';
+  chatView.style.display = 'none';
 
   // Update fkey active states
   document.querySelectorAll('.fkey').forEach(el => el.classList.remove('active'));
@@ -864,6 +1287,12 @@ function showView(view) {
     case 'browser':
       browserView.style.display = 'flex';
       document.querySelector('[data-key="F1"]').classList.add('active');
+      break;
+    case 'mcp':
+      if (!state.mcpEnabled) return;
+      mcpView.style.display = 'flex';
+      document.querySelector('[data-key="F2"]').classList.add('active');
+      loadMcpView();
       break;
     case 'compare':
       if (!state.dualMode) return;
@@ -880,6 +1309,12 @@ function showView(view) {
       dupesView.style.display = 'flex';
       document.querySelector('[data-key="F7"]').classList.add('active');
       loadDupesView();
+      break;
+    case 'chat':
+      if (!state.mcpEnabled) return;
+      chatView.style.display = 'flex';
+      document.querySelector('[data-key="F4"]').classList.add('active');
+      loadChatView();
       break;
   }
 }
@@ -1142,7 +1577,7 @@ function renderTreemap(data) {
 
   if (!data || data.size === 0) {
     ctx.fillStyle = '#00FFFF';
-    ctx.font = '14px "IBM Plex Mono", monospace';
+    ctx.font = '14px "Perfect DOS VGA 437", monospace';
     ctx.textAlign = 'center';
     ctx.fillText('No data', canvas.width / 2, canvas.height / 2);
     return;
@@ -1273,7 +1708,7 @@ function drawTreemapRect(ctx, item, rect) {
   // Label
   if (rect.w > 30 && rect.h > 14) {
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = `${Math.min(12, rect.h - 4)}px "IBM Plex Mono", monospace`;
+    ctx.font = `${Math.min(12, rect.h - 4)}px "Perfect DOS VGA 437", monospace`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     const label = item.name;
@@ -1283,7 +1718,7 @@ function drawTreemapRect(ctx, item, rect) {
 
     if (rect.h > 28 && rect.w > 50) {
       ctx.fillStyle = '#AAAAAA';
-      ctx.font = `${Math.min(10, rect.h - 16)}px "IBM Plex Mono", monospace`;
+      ctx.font = `${Math.min(10, rect.h - 16)}px "Perfect DOS VGA 437", monospace`;
       ctx.fillText(humanSize(item.size), rect.x + 3, rect.y + 16);
     }
   }
@@ -1590,12 +2025,14 @@ function handleFKey(key) {
   if (state.viewerOpen && key !== 'F10') { closeViewer(); return; }
   switch(key) {
     case 'F1': showView('browser'); break;
+    case 'F2': showView('mcp'); break;
     case 'F3':
       const sel = getSelectedEntry(state.focusedPanel);
       if (sel && !sel.isParent && !sel.isDirectory) {
         openFileViewer(state.focusedPanel, sel.path);
       }
       break;
+    case 'F4': showView('chat'); break;
     case 'F5': showView('compare'); break;
     case 'F6': showView('space'); break;
     case 'F7': showView('dupes'); break;
@@ -1639,7 +2076,9 @@ document.addEventListener('keydown', (e) => {
   // Global keys
   switch(e.key) {
     case 'F1': e.preventDefault(); handleFKey('F1'); break;
+    case 'F2': e.preventDefault(); handleFKey('F2'); break;
     case 'F3': e.preventDefault(); handleFKey('F3'); break;
+    case 'F4': e.preventDefault(); handleFKey('F4'); break;
     case 'F5': e.preventDefault(); handleFKey('F5'); break;
     case 'F6': e.preventDefault(); handleFKey('F6'); break;
     case 'F7': e.preventDefault(); handleFKey('F7'); break;
@@ -1762,6 +2201,448 @@ function humanSize(bytes) {
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return sign + (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
 }
+
+// ═══════════════ MCP VIEW ═══════════════
+
+async function loadMcpView() {
+  try {
+    const res = await fetch('/api/mcp/servers');
+    const data = await res.json();
+    state.mcpServers = data.servers || [];
+    renderMcpServers();
+    if (state.mcpSelectedServer) {
+      loadMcpTools(state.mcpSelectedServer);
+    }
+  } catch(e) { console.error('MCP load error:', e); }
+}
+
+function renderMcpServers() {
+  const list = $('mcp-server-list');
+  let html = '';
+  for (const srv of state.mcpServers) {
+    const selected = state.mcpSelectedServer === srv.name ? ' selected' : '';
+    html += `<div class="mcp-server-item${selected}" data-server="${esc(srv.name)}">
+      <span class="mcp-srv-name">${esc(srv.name)}</span>
+      <span class="mcp-srv-status ${srv.status}">${srv.status} (${srv.toolCount})</span>
+    </div>`;
+  }
+  if (state.mcpServers.length === 0) {
+    html = '<div style="padding:8px;color:var(--text-dim);text-align:center">No MCP servers configured</div>';
+  }
+  list.innerHTML = html;
+
+  // Click handlers
+  list.querySelectorAll('.mcp-server-item').forEach(el => {
+    el.addEventListener('click', () => {
+      state.mcpSelectedServer = el.dataset.server;
+      renderMcpServers();
+      loadMcpTools(state.mcpSelectedServer);
+    });
+  });
+
+  // Update button states
+  const srv = state.mcpServers.find(s => s.name === state.mcpSelectedServer);
+  $('mcp-start-btn').disabled = !srv || srv.status === 'connected' || srv.status === 'starting';
+  $('mcp-stop-btn').disabled = !srv || srv.status === 'stopped';
+  $('mcp-remove-btn').disabled = !srv;
+}
+
+async function loadMcpTools(serverName) {
+  try {
+    const res = await fetch(`/api/mcp/tools/${encodeURIComponent(serverName)}`);
+    const data = await res.json();
+    state.mcpTools = data.tools || [];
+    $('mcp-tool-header').textContent = `┤ Tools: ${serverName} (${state.mcpTools.length}) ├`;
+    renderMcpTools();
+  } catch(e) {
+    state.mcpTools = [];
+    renderMcpTools();
+  }
+}
+
+function renderMcpTools() {
+  const list = $('mcp-tool-list');
+  let html = '';
+  for (const tool of state.mcpTools) {
+    html += `<div class="mcp-tool-item" data-server="${esc(tool.server)}" data-tool="${esc(tool.name)}">
+      <div class="mcp-tool-name">${esc(tool.name)}</div>
+      <div class="mcp-tool-desc">${esc(tool.description)}</div>
+    </div>`;
+  }
+  if (state.mcpTools.length === 0) {
+    html = '<div style="padding:8px;color:var(--text-dim);text-align:center">No tools available (server not connected?)</div>';
+  }
+  list.innerHTML = html;
+
+  // Click to invoke
+  list.querySelectorAll('.mcp-tool-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const tool = state.mcpTools.find(t => t.name === el.dataset.tool && t.server === el.dataset.server);
+      if (tool) openInvokeToolDialog(tool);
+    });
+  });
+}
+
+// MCP Server action buttons
+$('mcp-start-btn').addEventListener('click', async () => {
+  if (!state.mcpSelectedServer) return;
+  try {
+    await fetch(`/api/mcp/servers/${encodeURIComponent(state.mcpSelectedServer)}/start`, { method: 'POST' });
+    setTimeout(() => loadMcpView(), 500);
+  } catch(e) { console.error(e); }
+});
+
+$('mcp-stop-btn').addEventListener('click', async () => {
+  if (!state.mcpSelectedServer) return;
+  try {
+    await fetch(`/api/mcp/servers/${encodeURIComponent(state.mcpSelectedServer)}/stop`, { method: 'POST' });
+    setTimeout(() => loadMcpView(), 500);
+  } catch(e) { console.error(e); }
+});
+
+$('mcp-add-btn').addEventListener('click', () => {
+  $('mcp-add-name').value = '';
+  $('mcp-add-command').value = '';
+  $('mcp-add-args').value = '';
+  $('mcp-add-env').value = '';
+  $('mcp-add-autostart').checked = false;
+  $('mcp-add-dialog').classList.add('visible');
+  $('mcp-add-name').focus();
+});
+
+$('mcp-add-cancel').addEventListener('click', () => {
+  $('mcp-add-dialog').classList.remove('visible');
+});
+
+$('mcp-add-ok').addEventListener('click', async () => {
+  const name = $('mcp-add-name').value.trim();
+  const command = $('mcp-add-command').value.trim();
+  const argsStr = $('mcp-add-args').value.trim();
+  const envStr = $('mcp-add-env').value.trim();
+  const autoStart = $('mcp-add-autostart').checked;
+
+  if (!name || !command) return;
+
+  const args = argsStr ? argsStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const env = {};
+  if (envStr) {
+    for (const pair of envStr.split(',')) {
+      const eq = pair.indexOf('=');
+      if (eq > 0) env[pair.substring(0, eq).trim()] = pair.substring(eq + 1).trim();
+    }
+  }
+
+  try {
+    await fetch('/api/mcp/servers', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, command, args, env, autoStart }),
+    });
+    $('mcp-add-dialog').classList.remove('visible');
+    loadMcpView();
+  } catch(e) { console.error(e); }
+});
+
+$('mcp-remove-btn').addEventListener('click', async () => {
+  if (!state.mcpSelectedServer) return;
+  if (!confirm(`Remove server "${state.mcpSelectedServer}"?`)) return;
+  try {
+    await fetch(`/api/mcp/servers/${encodeURIComponent(state.mcpSelectedServer)}`, { method: 'DELETE' });
+    state.mcpSelectedServer = null;
+    loadMcpView();
+  } catch(e) { console.error(e); }
+});
+
+// MCP Invoke Tool Dialog
+function openInvokeToolDialog(tool) {
+  state.mcpInvokeTool = tool;
+  $('mcp-invoke-title').textContent = `┤ ${tool.server} / ${tool.name} ├`;
+
+  // Generate form from JSON Schema
+  const schema = tool.inputSchema || {};
+  const props = schema.properties || {};
+  const required = schema.required || [];
+  let html = '';
+
+  if (Object.keys(props).length === 0) {
+    html = '<div style="color:var(--text-dim);text-align:center;padding:8px">No parameters</div>';
+  } else {
+    for (const [key, prop] of Object.entries(props)) {
+      const isReq = required.includes(key);
+      const label = `${key}${isReq ? ' *' : ''} <span style="color:var(--text-dim);font-size:10px">(${prop.type || 'string'})</span>`;
+
+      if (prop.type === 'boolean') {
+        html += `<div class="mcp-form-group">
+          <label><input type="checkbox" class="mcp-form-checkbox" data-param="${esc(key)}"> ${label}</label>
+          ${prop.description ? `<div style="color:var(--text-dim);font-size:10px">${esc(prop.description)}</div>` : ''}
+        </div>`;
+      } else if (prop.enum) {
+        html += `<div class="mcp-form-group">
+          <label class="mcp-form-label">${label}</label>
+          <select class="mcp-form-input" data-param="${esc(key)}">
+            ${prop.enum.map(v => `<option value="${esc(String(v))}">${esc(String(v))}</option>`).join('')}
+          </select>
+          ${prop.description ? `<div style="color:var(--text-dim);font-size:10px">${esc(prop.description)}</div>` : ''}
+        </div>`;
+      } else {
+        html += `<div class="mcp-form-group">
+          <label class="mcp-form-label">${label}</label>
+          <input class="mcp-form-input" data-param="${esc(key)}" placeholder="${esc(prop.description || '')}" value="${esc(prop.default != null ? String(prop.default) : '')}">
+          ${prop.description ? `<div style="color:var(--text-dim);font-size:10px">${esc(prop.description)}</div>` : ''}
+        </div>`;
+      }
+    }
+  }
+
+  $('mcp-invoke-form').innerHTML = html;
+  $('mcp-invoke-dialog').classList.add('visible');
+}
+
+$('mcp-invoke-cancel').addEventListener('click', () => {
+  $('mcp-invoke-dialog').classList.remove('visible');
+});
+
+$('mcp-invoke-ok').addEventListener('click', async () => {
+  if (!state.mcpInvokeTool) return;
+  const tool = state.mcpInvokeTool;
+  const schema = tool.inputSchema || {};
+  const props = schema.properties || {};
+
+  // Collect args from form
+  const args = {};
+  for (const [key, prop] of Object.entries(props)) {
+    const el = $('mcp-invoke-form').querySelector(`[data-param="${key}"]`);
+    if (!el) continue;
+
+    if (prop.type === 'boolean') {
+      args[key] = el.checked;
+    } else if (prop.type === 'number' || prop.type === 'integer') {
+      const val = el.value.trim();
+      if (val) args[key] = Number(val);
+    } else {
+      const val = el.value.trim();
+      if (val) args[key] = val;
+    }
+  }
+
+  $('mcp-invoke-dialog').classList.remove('visible');
+
+  // Call tool
+  const resultEl = $('mcp-tool-result');
+  resultEl.style.display = 'block';
+  resultEl.innerHTML = '<pre style="color:var(--text-dim)">Invoking...</pre>';
+
+  try {
+    const res = await fetch(`/api/mcp/tools/${encodeURIComponent(tool.server)}/${encodeURIComponent(tool.name)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(args),
+    });
+    const data = await res.json();
+    let text = '';
+    if (data.result && data.result.content) {
+      text = data.result.content.map(c => c.type === 'text' ? c.text : JSON.stringify(c)).join('\n');
+    } else {
+      text = JSON.stringify(data, null, 2);
+    }
+    // Truncate
+    if (text.length > 2000) {
+      text = text.substring(0, 2000) + '\n... (truncated, ' + text.length + ' chars total)';
+    }
+    resultEl.innerHTML = `<pre>${escHtml(text)}</pre>`;
+  } catch(e) {
+    resultEl.innerHTML = `<pre style="color:var(--red)">Error: ${esc(e.message)}</pre>`;
+  }
+});
+
+// MCP WebSocket handlers
+function handleMcpServerStatus(msg) {
+  const srv = state.mcpServers.find(s => s.name === msg.name);
+  if (srv) {
+    srv.status = msg.status;
+    if (state.currentView === 'mcp') renderMcpServers();
+  }
+}
+
+function handleMcpToolsUpdated(msg) {
+  if (state.mcpSelectedServer === msg.name && state.currentView === 'mcp') {
+    loadMcpTools(msg.name);
+  }
+}
+
+// ═══════════════ CHAT VIEW ═══════════════
+
+async function loadChatView() {
+  // Load LLM config
+  try {
+    const res = await fetch('/api/mcp/llm/config');
+    const cfg = await res.json();
+    $('chat-llm-info').textContent = `LLM: ${cfg.model || '?'} @ ${cfg.baseUrl || '?'}`;
+  } catch(e) {
+    $('chat-llm-info').textContent = 'LLM: not configured';
+  }
+
+  // Load tool count
+  try {
+    const res = await fetch('/api/mcp/tools');
+    const data = await res.json();
+    $('chat-tool-count').textContent = (data.tools || []).length;
+  } catch(e) {}
+
+  renderChatMessages();
+  // Focus input
+  setTimeout(() => $('chat-input').focus(), 100);
+}
+
+function renderChatMessages() {
+  const container = $('chat-messages');
+  let html = '';
+
+  for (const msg of state.chatMessages) {
+    if (msg.type === 'user') {
+      html += `<div class="chat-msg user">
+        <div class="chat-msg-role">You</div>
+        <div class="chat-msg-content">${escHtml(msg.content)}</div>
+      </div>`;
+    } else if (msg.type === 'assistant') {
+      html += `<div class="chat-msg assistant">
+        <div class="chat-msg-role">Assistant</div>
+        <div class="chat-msg-content">${escHtml(msg.content)}</div>
+      </div>`;
+    } else if (msg.type === 'tool_call') {
+      html += `<div class="chat-tool-block">
+        <div class="chat-tool-header" data-toolidx="${msg.idx}">▶ ${esc(msg.serverName)}/${esc(msg.toolName)} ${msg.args ? '(' + esc(JSON.stringify(msg.args)).substring(0, 80) + ')' : ''}</div>
+        <div class="chat-tool-body" id="chat-tool-body-${msg.idx}">${msg.result != null ? escHtml(String(msg.result)) : '<span style="color:var(--text-dim)">Waiting...</span>'}</div>
+      </div>`;
+    } else if (msg.type === 'error') {
+      html += `<div class="chat-msg error">
+        <div class="chat-msg-role">Error</div>
+        <div class="chat-msg-content">${escHtml(msg.content)}</div>
+      </div>`;
+    }
+  }
+
+  if (state.chatWaiting) {
+    html += '<div class="chat-thinking">Thinking...</div>';
+  }
+
+  container.innerHTML = html;
+
+  // Scroll to bottom
+  container.scrollTop = container.scrollHeight;
+
+  // Toggle tool body on click
+  container.querySelectorAll('.chat-tool-header').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = el.dataset.toolidx;
+      const body = $(`chat-tool-body-${idx}`);
+      if (body) body.classList.toggle('expanded');
+    });
+  });
+}
+
+function sendChatMessage() {
+  const input = $('chat-input');
+  const message = input.value.trim();
+  if (!message || state.chatWaiting) return;
+
+  // Add to chat
+  state.chatMessages.push({ type: 'user', content: message });
+  state.chatWaiting = true;
+  input.value = '';
+  renderChatMessages();
+
+  // Send via WebSocket if connected, else via API
+  if (ws && ws.readyState === 1) {
+    ws.send(JSON.stringify({
+      type: 'chat:send',
+      message,
+      sessionId: state.chatSessionId,
+    }));
+  } else {
+    fetch('/api/mcp/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, sessionId: state.chatSessionId }),
+    }).catch(e => {
+      state.chatWaiting = false;
+      state.chatMessages.push({ type: 'error', content: e.message });
+      renderChatMessages();
+    });
+  }
+}
+
+let toolCallIdx = 0;
+
+function handleChatToolCall(msg) {
+  const idx = toolCallIdx++;
+  state.chatMessages.push({
+    type: 'tool_call',
+    idx,
+    serverName: msg.serverName,
+    toolName: msg.toolName,
+    args: msg.args,
+    result: null,
+  });
+  renderChatMessages();
+}
+
+function handleChatToolResult(msg) {
+  // Find the last tool_call message with matching tool and no result
+  for (let i = state.chatMessages.length - 1; i >= 0; i--) {
+    const m = state.chatMessages[i];
+    if (m.type === 'tool_call' && m.toolName === msg.toolName && m.serverName === msg.serverName && m.result == null) {
+      let resultText = msg.result;
+      if (typeof resultText === 'object') resultText = JSON.stringify(resultText, null, 2);
+      if (resultText && resultText.length > 2000) {
+        resultText = resultText.substring(0, 2000) + '\n... (truncated)';
+      }
+      m.result = resultText;
+      break;
+    }
+  }
+  renderChatMessages();
+}
+
+function handleChatDone(msg) {
+  state.chatWaiting = false;
+  if (msg.error) {
+    state.chatMessages.push({ type: 'error', content: msg.error });
+  } else if (msg.content) {
+    state.chatMessages.push({ type: 'assistant', content: msg.content });
+  }
+  if (msg.warning) {
+    state.chatMessages.push({ type: 'error', content: msg.warning });
+  }
+  renderChatMessages();
+}
+
+// Chat input handlers
+$('chat-send-btn').addEventListener('click', sendChatMessage);
+
+$('chat-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChatMessage();
+  }
+});
+
+// Auto-resize chat input
+$('chat-input').addEventListener('input', () => {
+  const el = $('chat-input');
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+});
+
+// Clear chat
+$('chat-clear-btn').addEventListener('click', async () => {
+  state.chatMessages = [];
+  toolCallIdx = 0;
+  renderChatMessages();
+  try {
+    await fetch(`/api/mcp/chat/${state.chatSessionId}`, { method: 'DELETE' });
+  } catch(e) {}
+});
 
 // ─── Start ───
 connectWS();

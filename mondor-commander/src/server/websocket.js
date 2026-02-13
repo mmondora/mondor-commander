@@ -5,6 +5,7 @@ class WsBroadcaster {
     this.clients = new Set();
     this.wss = null;
     this.lastStatus = null;
+    this.onMessage = null; // handler for client->server messages
   }
 
   attach(server) {
@@ -28,6 +29,14 @@ class WsBroadcaster {
       if (this.lastStatus && ws.readyState === 1) {
         ws.send(JSON.stringify(this.lastStatus));
       }
+      ws.on('message', (data) => {
+        try {
+          const msg = JSON.parse(data);
+          if (this.onMessage) this.onMessage(msg, ws);
+        } catch (e) {
+          // Ignore malformed messages
+        }
+      });
       ws.on('close', () => this.clients.delete(ws));
       ws.on('error', () => this.clients.delete(ws));
     });

@@ -7,6 +7,9 @@ const { hashFiles } = require('../scanner/hasher.js');
 const { analyze } = require('../scanner/analyzer.js');
 const { createApiRouter } = require('./api.js');
 const { WsBroadcaster } = require('./websocket.js');
+const { McpManager } = require('./mcp-manager.js');
+const { ChatProxy } = require('./chat-proxy.js');
+const { createMcpRouter } = require('./mcp-api.js');
 
 async function startServer(config) {
   const app = express();
@@ -28,12 +31,34 @@ async function startServer(config) {
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' ws://localhost:* ws://127.0.0.1:*");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' ws://localhost:* ws://127.0.0.1:*");
     next();
   });
 
   // API routes
   app.use('/api', createApiRouter(store));
+
+  // MCP integration
+  let mcpManager = null;
+  let chatProxy = null;
+  if (config.mcpConfig) {
+    mcpManager = new McpManager(config.mcpConfig, ws);
+    chatProxy = new ChatProxy(mcpManager, ws);
+    app.use('/api/mcp', createMcpRouter(mcpManager, chatProxy));
+
+    // Handle WebSocket messages from clients (chat)
+    ws.onMessage = (msg) => {
+      if (msg.type === 'chat:send' && msg.message) {
+        const sessionId = msg.sessionId || 'default';
+        chatProxy.handleMessage(sessionId, msg.message).catch(err => {
+          console.error('Chat WS error:', err.message);
+        });
+      }
+    };
+  }
+
+  // Serve fonts
+  app.use('/fonts', express.static(path.join(__dirname, '..', 'frontend', 'fonts')));
 
   // Serve frontend
   const frontendPath = path.join(__dirname, '..', 'frontend', 'index.html');
@@ -61,6 +86,23 @@ async function startServer(config) {
   const url = `http://localhost:${config.port}`;
   console.log(`\n  Mondor Commander running at ${url}`);
   console.log('  Press Ctrl+C to stop\n');
+
+  // Init MCP servers
+  if (mcpManager) {
+    mcpManager.init().catch(err => {
+      console.error('  MCP init error:', err.message);
+    });
+  }
+
+  // Graceful shutdown for MCP
+  const origClose = server.close.bind(server);
+  server.close = async function(...args) {
+    if (mcpManager) {
+      console.log('  Shutting down MCP servers...');
+      await mcpManager.shutdown();
+    }
+    return origClose(...args);
+  };
 
   // Auto-open browser
   if (config.autoOpen) {

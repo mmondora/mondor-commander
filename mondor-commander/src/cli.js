@@ -19,6 +19,7 @@ program
   .option('--exclude <patterns...>', 'Glob patterns to exclude', ['node_modules', '.git', '.DS_Store'])
   .option('--no-hash', 'Skip SHA-256 hashing (faster, no duplicate detection)')
   .option('--follow-symlinks', 'Follow symbolic links', false)
+  .option('--mcp-config <path>', 'Path to MCP servers config file (mcp-servers.json)')
   .option('-v, --verbose', 'Verbose logging', false)
   .action(async (path1, path2, options) => {
     try {
@@ -35,6 +36,17 @@ program
       const maxDepth = options.maxDepth ? parseInt(options.maxDepth, 10) : Infinity;
       const maxFileSize = parseSize(options.maxFileSize);
 
+      let mcpConfig = null;
+      if (options.mcpConfig) {
+        mcpConfig = path.resolve(options.mcpConfig);
+        try {
+          await fs.stat(mcpConfig);
+        } catch {
+          console.error(`MCP config not found: ${mcpConfig}`);
+          process.exit(1);
+        }
+      }
+
       const config = {
         path1: resolvedPath1,
         path2: resolvedPath2,
@@ -47,6 +59,7 @@ program
         followSymlinks: options.followSymlinks,
         verbose: options.verbose,
         dualMode: !!resolvedPath2,
+        mcpConfig,
       };
 
       if (config.verbose) {

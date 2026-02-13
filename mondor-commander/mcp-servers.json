@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "env": {},
+      "autoStart": true
+    }
+  },
+  "llm": {
+    "baseUrl": "http://localhost:11434/v1",
+    "model": "llama3.2",
+    "apiKey": "",
+    "maxTokens": 4096
+  }
+}
