@@ -14,6 +14,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MC_DIR="$SCRIPT_DIR/mondor-commander"
+PID_FILE="$MC_DIR/.mc.pid"
 
 # ══════════════════════════════════════════════════════
 # Colori ANSI — stile DOS bold
@@ -182,6 +183,34 @@ fi
 box_bottom
 echo ""
 
+# ══════════════════════════════════════════════════════
+# Cleanup al Ctrl+C / terminazione
+# ══════════════════════════════════════════════════════
+cleanup() {
+    echo ""
+    echo -e "  ${FG_YELLOW}${BOLD}▓▓${NC} Arresto Mondor Commander..."
+    if [ -n "${MC_PID:-}" ] && kill -0 "$MC_PID" 2>/dev/null; then
+        kill "$MC_PID" 2>/dev/null
+        wait "$MC_PID" 2>/dev/null || true
+    fi
+    rm -f "$PID_FILE"
+    echo -e "  ${FG_GREEN}${BOLD}▓▓${NC} Server arrestato."
+    echo ""
+    exit 0
+}
+
+trap cleanup INT TERM
+
+# Controlla se c'e' gia' un'istanza attiva
+if [ -f "$PID_FILE" ]; then
+    OLD_PID=$(cat "$PID_FILE")
+    if kill -0 "$OLD_PID" 2>/dev/null; then
+        die "Mondor Commander e' gia' in esecuzione (PID $OLD_PID). Usa ./stop.sh per fermarlo."
+    else
+        rm -f "$PID_FILE"
+    fi
+fi
+
 # Avvia Mondor Commander
 echo -e "  ${FG_CYAN}${BOLD}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓${NC}"
 echo -e "  ${FG_CYAN}${BOLD}▓▓${NC}  ${FG_WHITE}Avvio Mondor Commander...${NC}"
@@ -189,7 +218,17 @@ echo -e "  ${FG_CYAN}${BOLD}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓�
 echo ""
 
 if [ -n "$DIR2" ]; then
-    exec node "$MC_DIR/bin/mc.js" "$DIR1" "$DIR2" "$@"
+    node "$MC_DIR/bin/mc.js" "$DIR1" "$DIR2" "$@" &
 else
-    exec node "$MC_DIR/bin/mc.js" "$DIR1" "$@"
+    node "$MC_DIR/bin/mc.js" "$DIR1" "$@" &
 fi
+
+MC_PID=$!
+echo "$MC_PID" > "$PID_FILE"
+
+echo -e "  ${FG_GRAY}PID: $MC_PID — Ctrl+C per arrestare${NC}"
+echo ""
+
+# Attendi che il processo termini
+wait "$MC_PID" 2>/dev/null || true
+rm -f "$PID_FILE"
