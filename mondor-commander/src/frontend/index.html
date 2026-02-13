@@ -231,7 +231,7 @@ body {
   transition: width 0.2s;
 }
 
-/* ═══════════════ COMPARE VIEW ═══════════════ */
+/* ═══════════════ SYNC PLANNER VIEW (F5) ═══════════════ */
 #compare-view {
   display: none;
   flex: 1;
@@ -239,58 +239,196 @@ body {
   overflow: hidden;
 }
 
-.compare-stats {
+.sync-summary-bar {
   display: flex;
-  gap: 16px;
-  padding: 8px 12px;
+  gap: 12px;
+  padding: 6px 12px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
   justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.sync-summary-badge {
+  padding: 2px 8px;
+  font-weight: bold;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.sync-summary-badge:hover { border-color: var(--header); }
+.sync-summary-badge.active { border-color: var(--header); background: rgba(255,255,0,0.15); }
+
+.sync-quick-btn {
+  padding: 1px 6px;
+  background: var(--fkey-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  margin-left: 4px;
+}
+.sync-quick-btn:hover { background: var(--selected-bg); color: var(--selected-text); }
+
+.sync-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.sync-toolbar label { color: var(--text-dim); cursor: pointer; }
+.sync-toolbar input[type="checkbox"] { margin-right: 3px; }
+.sync-toolbar select {
+  background: var(--fkey-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-family: inherit;
+  font-size: 12px;
+  padding: 1px 4px;
+}
+
+.sync-search-input {
+  background: var(--fkey-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+  width: 160px;
+  margin-left: auto;
+}
+.sync-search-input:focus { border-color: var(--header); }
+
+.sync-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sync-list-header {
+  display: flex;
+  padding: 2px 8px;
+  background: var(--bg);
+  color: var(--text-dim);
+  font-size: 11px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.sync-list-header span { padding: 0 4px; }
+
+.sync-row {
+  display: flex;
+  padding: 1px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  height: 20px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.sync-row:hover { background: rgba(0,170,170,0.15); }
+.sync-row.selected { background: var(--selected-bg); color: var(--selected-text); }
+.sync-row.selected .sync-path,
+.sync-row.selected .sync-size,
+.sync-row.selected .sync-action,
+.sync-row.selected .sync-status-label,
+.sync-row.selected .tag-badge { color: var(--selected-text); border-color: var(--selected-text); }
+.sync-row.tagged { background: rgba(0,170,170,0.08); }
+
+.sync-row .sync-check { width: 20px; flex-shrink: 0; text-align: center; }
+.sync-row .sync-tag-col { width: 80px; flex-shrink: 0; }
+.sync-row .sync-status-label { width: 64px; flex-shrink: 0; font-weight: bold; }
+.sync-row .sync-path { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.sync-row .sync-size { width: 70px; flex-shrink: 0; text-align: right; color: var(--text-dim); }
+.sync-row .sync-size-right { width: 70px; flex-shrink: 0; text-align: right; color: var(--text-dim); }
+.sync-row .sync-action { width: 70px; flex-shrink: 0; text-align: center; color: var(--text-dim); }
+
+.status-missing { color: var(--red); }
+.status-modified { color: var(--yellow); }
+.status-orphan { color: #FF55FF; }
+.status-identical { color: var(--green); }
+
+.sync-detail {
+  background: var(--bg-dark);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--header);
+  margin: 0 8px 4px 28px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.sync-detail-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+
+.sync-detail-label { color: var(--text-dim); width: 80px; flex-shrink: 0; }
+.sync-detail-value { color: var(--text); }
+
+.sync-detail-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
   flex-wrap: wrap;
 }
 
-.compare-stat {
-  padding: 2px 8px;
-}
-
-.compare-stat .stat-value { font-weight: bold; }
-
-.compare-columns {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-.compare-column {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.compare-column-header {
-  text-align: center;
-  padding: 4px;
-  font-weight: bold;
-  border-bottom: 1px solid var(--border);
-}
-
-.compare-column-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 4px;
-}
-
-.compare-item {
-  padding: 1px 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.sync-detail-btn {
+  padding: 2px 10px;
+  background: var(--fkey-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
   cursor: pointer;
-  height: 20px;
-  line-height: 20px;
+  font-family: inherit;
+  font-size: 12px;
 }
-.compare-item:hover { background: rgba(0,170,170,0.15); }
+.sync-detail-btn:hover { background: var(--selected-bg); color: var(--selected-text); }
+.sync-detail-btn.active { background: var(--selected-bg); color: var(--selected-text); }
+
+.sync-detail-diff {
+  margin-top: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  background: #000;
+  padding: 4px;
+}
+
+.sync-footer {
+  display: flex;
+  gap: 12px;
+  padding: 4px 12px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  align-items: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.sync-footer-stats { color: var(--text-dim); flex: 1; }
+.sync-footer .sync-gen-btn {
+  padding: 3px 14px;
+  background: var(--fkey-bg);
+  color: var(--header);
+  border: 1px solid var(--header);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: bold;
+}
+.sync-footer .sync-gen-btn:hover { background: var(--selected-bg); color: var(--selected-text); }
 
 /* ═══════════════ SPACE VIEW ═══════════════ */
 #space-view {
@@ -982,8 +1120,8 @@ body {
 
 .diff-line.current-change { outline: 2px solid var(--yellow); outline-offset: -2px; }
 
-/* Compare view tag indicators */
-.compare-item .tag-badge {
+/* Tag indicators */
+.tag-badge {
   display: inline-block;
   padding: 0 4px;
   font-size: 10px;
@@ -1036,10 +1174,12 @@ body {
       </div>
     </div>
 
-    <!-- Compare View -->
+    <!-- Sync Planner View (F5) -->
     <div id="compare-view">
-      <div class="compare-stats" id="compare-stats"></div>
-      <div class="compare-columns" id="compare-columns"></div>
+      <div class="sync-summary-bar" id="sync-summary"></div>
+      <div class="sync-toolbar" id="sync-toolbar"></div>
+      <div class="sync-list" id="sync-list"></div>
+      <div class="sync-footer" id="sync-footer"></div>
     </div>
 
     <!-- Space View -->
@@ -1118,7 +1258,7 @@ body {
     <div class="fkey" data-key="F2"><span class="fkey-num">2</span><span class="fkey-label">MCP</span></div>
     <div class="fkey" data-key="F3"><span class="fkey-num">3</span><span class="fkey-label">View</span></div>
     <div class="fkey" data-key="F4"><span class="fkey-num">4</span><span class="fkey-label">Chat</span></div>
-    <div class="fkey" data-key="F5"><span class="fkey-num">5</span><span class="fkey-label">Compare</span></div>
+    <div class="fkey" data-key="F5"><span class="fkey-num">5</span><span class="fkey-label">Sync</span></div>
     <div class="fkey" data-key="F6"><span class="fkey-num">6</span><span class="fkey-label">Space</span></div>
     <div class="fkey" data-key="F7"><span class="fkey-num">7</span><span class="fkey-label">Dupes</span></div>
     <div class="fkey" data-key="F10"><span class="fkey-num">10</span><span class="fkey-label">Quit</span></div>
@@ -1574,72 +1714,402 @@ function moveSelection(side, delta) {
   renderFileList(side);
 }
 
-// ─── Compare View ───
+// ─── Sync Planner View (F5) ───
+
+// Sync planner state
+state.syncFilter = 'all'; // all | missing | modified | orphan
+state.syncSort = 'path';  // path | size | status
+state.syncShowIdentical = false;
+state.syncSelectedIndex = -1;
+state.syncExpandedPath = null;
+state.syncChecked = new Set();
+state.syncSearchQuery = '';
+state.syncFilteredList = []; // cached filtered list
+
 async function loadCompareView() {
   if (!state.dualMode) return;
   try {
-    const res = await fetch('/api/compare');
-    state.comparison = await res.json();
-    renderCompareView();
+    const [compRes] = await Promise.all([
+      fetch('/api/compare'),
+      loadSyncPlan(),
+    ]);
+    state.comparison = await compRes.json();
+    state.syncSelectedIndex = 0;
+    state.syncExpandedPath = null;
+    state.syncChecked.clear();
+    renderSyncPlanner();
   } catch(e) { console.error(e); }
 }
 
-function renderCompareView() {
-  const c = state.comparison;
-  if (!c) return;
+function getSyncFilteredList() {
+  if (!state.syncPlan || !state.syncPlan.entries) return [];
 
-  // Stats
-  $('compare-stats').innerHTML = `
-    <div class="compare-stat" style="color:var(--red)"><span class="stat-value">${c.stats.onlyLeftCount}</span> only left</div>
-    <div class="compare-stat" style="color:var(--yellow)"><span class="stat-value">${c.stats.modifiedCount}</span> modified</div>
-    <div class="compare-stat" style="color:var(--green)"><span class="stat-value">${c.stats.commonCount}</span> identical</div>
-    <div class="compare-stat" style="color:var(--red)"><span class="stat-value">${c.stats.onlyRightCount}</span> only right</div>
-  `;
+  let list = state.syncPlan.entries.slice();
 
-  // Three columns
-  let html = '';
-
-  // Only Left
-  html += `<div class="compare-column" style="border-right:1px solid var(--border)">
-    <div class="compare-column-header" style="color:var(--red)">Only Left (${c.onlyLeft.length})</div>
-    <div class="compare-column-list">`;
-  for (const f of c.onlyLeft) {
-    html += `<div class="compare-item" style="color:var(--red)" data-path="${esc(f.path)}" data-side="left">${esc(f.path)} <span style="color:var(--text-dim)">${f.sizeHuman}</span></div>`;
+  // Filter by status
+  if (state.syncFilter !== 'all') {
+    list = list.filter(e => e.status === state.syncFilter);
   }
-  html += '</div></div>';
 
-  // Modified
-  html += `<div class="compare-column" style="border-right:1px solid var(--border)">
-    <div class="compare-column-header" style="color:var(--yellow)">Modified (${c.modified.length})</div>
-    <div class="compare-column-list">`;
-  for (const m of c.modified) {
-    const arrow = m.sizeDiff > 0 ? '+' : '';
-    html += `<div class="compare-item" style="color:var(--yellow)" data-path="${esc(m.relativePath)}" data-modified="true">${esc(m.relativePath)} <span style="color:var(--text-dim)">${arrow}${humanSize(m.sizeDiff)}</span></div>`;
+  // Hide identical unless toggled on
+  if (!state.syncShowIdentical && state.syncFilter === 'all') {
+    list = list.filter(e => e.status !== 'identical');
   }
-  html += '</div></div>';
 
-  // Only Right
-  html += `<div class="compare-column">
-    <div class="compare-column-header" style="color:var(--red)">Only Right (${c.onlyRight.length})</div>
-    <div class="compare-column-list">`;
-  for (const f of c.onlyRight) {
-    html += `<div class="compare-item" style="color:var(--red)" data-path="${esc(f.path)}" data-side="right">${esc(f.path)} <span style="color:var(--text-dim)">${f.sizeHuman}</span></div>`;
+  // Search filter
+  if (state.syncSearchQuery) {
+    const q = state.syncSearchQuery.toLowerCase();
+    list = list.filter(e => e.relativePath.toLowerCase().includes(q));
   }
-  html += '</div></div>';
 
-  $('compare-columns').innerHTML = html;
+  // Sort
+  if (state.syncSort === 'path') {
+    list.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
+  } else if (state.syncSort === 'size') {
+    list.sort((a, b) => {
+      const sa = (a.left ? a.left.size : 0) + (a.right ? a.right.size : 0);
+      const sb = (b.left ? b.left.size : 0) + (b.right ? b.right.size : 0);
+      return sb - sa;
+    });
+  } else if (state.syncSort === 'status') {
+    const order = { missing: 0, modified: 1, orphan: 2, identical: 3 };
+    list.sort((a, b) => (order[a.status] || 9) - (order[b.status] || 9) || a.relativePath.localeCompare(b.relativePath));
+  }
 
-  // Click handlers for compare items
-  document.querySelectorAll('.compare-item').forEach(el => {
+  return list;
+}
+
+function renderSyncPlanner() {
+  state.syncFilteredList = getSyncFilteredList();
+  renderSyncSummary();
+  renderSyncToolbar();
+  renderSyncList();
+  renderSyncFooter();
+}
+
+function renderSyncSummary() {
+  const plan = state.syncPlan;
+  if (!plan || !plan.summary) {
+    $('sync-summary').innerHTML = '<span style="color:var(--text-dim)">No sync plan loaded</span>';
+    return;
+  }
+  const s = plan.summary;
+  const bs = s.byStatus;
+
+  const makeFilter = (status, label, color, count) => {
+    const active = state.syncFilter === status ? ' active' : '';
+    return `<span class="sync-summary-badge${active}" style="color:${color}" data-filter="${status}">${count} ${label}</span>`;
+  };
+
+  let html = makeFilter('all', 'ALL', 'var(--white)', s.total);
+  html += makeFilter('missing', 'MISS', 'var(--red)', bs.missing || 0);
+  html += `<button class="sync-quick-btn" data-bulk-status="missing" data-bulk-action="copy" title="Tag all missing → COPY">→COPY</button>`;
+  html += makeFilter('modified', 'DIFF', 'var(--yellow)', bs.modified || 0);
+  html += `<button class="sync-quick-btn" data-bulk-status="modified" data-bulk-action="overwrite" title="Tag all modified → OVERWRITE">→OVRW</button>`;
+  html += makeFilter('orphan', 'ORPHAN', '#FF55FF', bs.orphan || 0);
+  html += `<button class="sync-quick-btn" data-bulk-status="orphan" data-bulk-action="delete" title="Tag all orphan → DELETE">→DEL</button>`;
+
+  if (state.syncShowIdentical || state.syncFilter === 'identical') {
+    html += makeFilter('identical', 'IDENT', 'var(--green)', bs.identical || 0);
+  }
+
+  $('sync-summary').innerHTML = html;
+
+  // Event handlers for filter badges
+  $('sync-summary').querySelectorAll('.sync-summary-badge').forEach(el => {
     el.addEventListener('click', () => {
-      const p = el.dataset.path;
-      if (el.dataset.modified) {
-        openDiffViewer(p);
-      } else {
-        openFileViewer(el.dataset.side || 'left', p);
-      }
+      state.syncFilter = el.dataset.filter;
+      state.syncSelectedIndex = 0;
+      state.syncExpandedPath = null;
+      renderSyncPlanner();
     });
   });
+
+  // Bulk tag buttons
+  $('sync-summary').querySelectorAll('.sync-quick-btn').forEach(el => {
+    el.addEventListener('click', () => {
+      tagAllByStatus(el.dataset.bulkStatus, el.dataset.bulkAction);
+    });
+  });
+}
+
+function renderSyncToolbar() {
+  let html = '';
+
+  // Sort dropdown
+  html += `<span style="color:var(--text-dim)">Sort:</span>`;
+  html += `<select id="sync-sort-select">
+    <option value="path"${state.syncSort === 'path' ? ' selected' : ''}>Path</option>
+    <option value="size"${state.syncSort === 'size' ? ' selected' : ''}>Size</option>
+    <option value="status"${state.syncSort === 'status' ? ' selected' : ''}>Status</option>
+  </select>`;
+
+  // Show identical toggle
+  html += `<label><input type="checkbox" id="sync-show-identical"${state.syncShowIdentical ? ' checked' : ''}> Show identical</label>`;
+
+  // Select all checkbox
+  const allChecked = state.syncFilteredList.length > 0 && state.syncFilteredList.every(e => state.syncChecked.has(e.relativePath));
+  html += `<label><input type="checkbox" id="sync-select-all"${allChecked ? ' checked' : ''}> Select all</label>`;
+
+  // Batch actions (show when items are checked)
+  if (state.syncChecked.size > 0) {
+    html += `<span style="color:var(--border)">│</span>`;
+    html += `<span style="color:var(--header)">${state.syncChecked.size} selected:</span>`;
+    html += `<button class="sync-quick-btn" data-batch="copy">COPY</button>`;
+    html += `<button class="sync-quick-btn" data-batch="overwrite">OVRW</button>`;
+    html += `<button class="sync-quick-btn" data-batch="delete">DEL</button>`;
+    html += `<button class="sync-quick-btn" data-batch="skip">SKIP</button>`;
+    html += `<button class="sync-quick-btn" data-batch="null">Clear</button>`;
+  }
+
+  // Search input
+  html += `<input type="text" class="sync-search-input" id="sync-search-input" placeholder="/ search..." value="${esc(state.syncSearchQuery)}">`;
+
+  $('sync-toolbar').innerHTML = html;
+
+  // Event handlers
+  const sortSel = $('sync-sort-select');
+  if (sortSel) sortSel.addEventListener('change', () => { state.syncSort = sortSel.value; renderSyncPlanner(); });
+
+  const identCb = $('sync-show-identical');
+  if (identCb) identCb.addEventListener('change', () => { state.syncShowIdentical = identCb.checked; renderSyncPlanner(); });
+
+  const selectAllCb = $('sync-select-all');
+  if (selectAllCb) selectAllCb.addEventListener('change', () => {
+    if (selectAllCb.checked) {
+      state.syncFilteredList.forEach(e => state.syncChecked.add(e.relativePath));
+    } else {
+      state.syncChecked.clear();
+    }
+    renderSyncPlanner();
+  });
+
+  // Batch action buttons
+  $('sync-toolbar').querySelectorAll('[data-batch]').forEach(el => {
+    el.addEventListener('click', () => {
+      const action = el.dataset.batch === 'null' ? null : el.dataset.batch;
+      tagFiles([...state.syncChecked], action);
+    });
+  });
+
+  // Search input
+  const searchIn = $('sync-search-input');
+  if (searchIn) {
+    searchIn.addEventListener('input', () => {
+      state.syncSearchQuery = searchIn.value;
+      state.syncSelectedIndex = 0;
+      renderSyncPlanner();
+    });
+  }
+}
+
+function renderSyncList() {
+  const list = state.syncFilteredList;
+
+  // Column header
+  let html = `<div class="sync-list-header">
+    <span style="width:20px">☐</span>
+    <span style="width:80px">Tag</span>
+    <span style="width:64px">Status</span>
+    <span style="flex:1">Path</span>
+    <span style="width:70px;text-align:right">Left</span>
+    <span style="width:70px;text-align:right">Right</span>
+    <span style="width:70px;text-align:center">Action</span>
+  </div>`;
+
+  for (let i = 0; i < list.length; i++) {
+    const entry = list[i];
+    const selected = i === state.syncSelectedIndex ? ' selected' : '';
+    const tagged = entry.action ? ' tagged' : '';
+    const checked = state.syncChecked.has(entry.relativePath);
+    const statusClass = `status-${entry.status}`;
+
+    const leftSize = entry.left ? entry.left.sizeHuman || humanSize(entry.left.size) : '—';
+    const rightSize = entry.right ? entry.right.sizeHuman || humanSize(entry.right.size) : '—';
+    const sugAction = entry.suggestedAction || '';
+
+    html += `<div class="sync-row${selected}${tagged}" data-index="${i}" data-path="${esc(entry.relativePath)}">
+      <span class="sync-check">${checked ? '☑' : '☐'}</span>
+      <span class="sync-tag-col">${tagBadgeHtml(entry.action)}</span>
+      <span class="sync-status-label ${statusClass}">${entry.status.toUpperCase()}</span>
+      <span class="sync-path">${esc(entry.relativePath)}</span>
+      <span class="sync-size">${leftSize}</span>
+      <span class="sync-size-right">${rightSize}</span>
+      <span class="sync-action">${sugAction}</span>
+    </div>`;
+
+    // Render expanded detail panel if this row is expanded
+    if (state.syncExpandedPath === entry.relativePath) {
+      html += renderSyncDetail(entry);
+    }
+  }
+
+  if (list.length === 0) {
+    html += '<div style="padding:16px;text-align:center;color:var(--text-dim)">No files match current filter</div>';
+  }
+
+  $('sync-list').innerHTML = html;
+
+  // Scroll selected into view
+  const selRow = $('sync-list').querySelector('.sync-row.selected');
+  if (selRow) selRow.scrollIntoView({ block: 'nearest' });
+
+  // Click handlers
+  $('sync-list').querySelectorAll('.sync-row').forEach(el => {
+    el.addEventListener('click', (e) => {
+      const idx = parseInt(el.dataset.index);
+      state.syncSelectedIndex = idx;
+
+      // Check if click was on checkbox
+      const rect = el.querySelector('.sync-check').getBoundingClientRect();
+      if (e.clientX <= rect.right) {
+        const path = el.dataset.path;
+        if (state.syncChecked.has(path)) {
+          state.syncChecked.delete(path);
+        } else {
+          state.syncChecked.add(path);
+        }
+        renderSyncPlanner();
+        return;
+      }
+
+      // Single click selects, re-render to update
+      renderSyncList();
+      renderSyncFooter();
+    });
+
+    el.addEventListener('dblclick', () => {
+      const path = el.dataset.path;
+      if (state.syncExpandedPath === path) {
+        state.syncExpandedPath = null;
+      } else {
+        state.syncExpandedPath = path;
+      }
+      renderSyncList();
+    });
+  });
+
+  // Detail panel button handlers
+  $('sync-list').querySelectorAll('.sync-detail-btn[data-tag-action]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const path = el.dataset.path;
+      const action = el.dataset.tagAction === 'null' ? null : el.dataset.tagAction;
+      tagFiles([path], action);
+    });
+  });
+
+  $('sync-list').querySelectorAll('.sync-detail-btn[data-open-diff]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEnhancedDiffViewer(el.dataset.openDiff);
+    });
+  });
+
+  $('sync-list').querySelectorAll('.sync-detail-btn[data-view-file]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openFileViewer(el.dataset.side, el.dataset.viewFile);
+    });
+  });
+}
+
+function renderSyncDetail(entry) {
+  let html = '<div class="sync-detail">';
+
+  if (entry.status === 'missing') {
+    html += `<div class="sync-detail-row"><span class="sync-detail-label">File:</span><span class="sync-detail-value">${esc(entry.relativePath)}</span></div>`;
+    if (entry.left) {
+      html += `<div class="sync-detail-row"><span class="sync-detail-label">Size:</span><span class="sync-detail-value">${entry.left.sizeHuman || humanSize(entry.left.size)}</span></div>`;
+      html += `<div class="sync-detail-row"><span class="sync-detail-label">Modified:</span><span class="sync-detail-value">${entry.left.modified || '—'}</span></div>`;
+    }
+    html += `<div style="color:var(--red);margin:4px 0">File exists only on the LEFT side. Not present on right.</div>`;
+    html += `<div class="sync-detail-actions">
+      <button class="sync-detail-btn${entry.action === 'copy' ? ' active' : ''}" data-tag-action="copy" data-path="${esc(entry.relativePath)}">COPY →</button>
+      <button class="sync-detail-btn${entry.action === 'skip' ? ' active' : ''}" data-tag-action="skip" data-path="${esc(entry.relativePath)}">SKIP</button>
+      <button class="sync-detail-btn" data-view-file="${esc(entry.relativePath)}" data-side="left">Preview</button>
+    </div>`;
+  } else if (entry.status === 'modified') {
+    html += `<div class="sync-detail-row"><span class="sync-detail-label">File:</span><span class="sync-detail-value">${esc(entry.relativePath)}</span></div>`;
+    html += `<div class="sync-detail-row"><span class="sync-detail-label">Left size:</span><span class="sync-detail-value">${entry.left ? (entry.left.sizeHuman || humanSize(entry.left.size)) : '—'}</span></div>`;
+    html += `<div class="sync-detail-row"><span class="sync-detail-label">Right size:</span><span class="sync-detail-value">${entry.right ? (entry.right.sizeHuman || humanSize(entry.right.size)) : '—'}</span></div>`;
+    if (entry.left && entry.right) {
+      html += `<div class="sync-detail-row"><span class="sync-detail-label">Left mod:</span><span class="sync-detail-value">${entry.left.modified || '—'}</span></div>`;
+      html += `<div class="sync-detail-row"><span class="sync-detail-label">Right mod:</span><span class="sync-detail-value">${entry.right.modified || '—'}</span></div>`;
+    }
+    if (entry.newerSide) {
+      html += `<div style="color:var(--yellow);margin:4px 0">Newer: ${entry.newerSide} | Size diff: ${entry.sizeDiff > 0 ? '+' : ''}${humanSize(entry.sizeDiff || 0)}</div>`;
+    }
+    html += `<div class="sync-detail-actions">
+      <button class="sync-detail-btn${entry.action === 'overwrite' ? ' active' : ''}" data-tag-action="overwrite" data-path="${esc(entry.relativePath)}">OVERWRITE →</button>
+      <button class="sync-detail-btn${entry.action === 'keep-right' ? ' active' : ''}" data-tag-action="keep-right" data-path="${esc(entry.relativePath)}">KEEP RIGHT</button>
+      <button class="sync-detail-btn${entry.action === 'skip' ? ' active' : ''}" data-tag-action="skip" data-path="${esc(entry.relativePath)}">SKIP</button>
+      <button class="sync-detail-btn" data-open-diff="${esc(entry.relativePath)}">Open Full Diff</button>
+    </div>`;
+  } else if (entry.status === 'orphan') {
+    html += `<div class="sync-detail-row"><span class="sync-detail-label">File:</span><span class="sync-detail-value">${esc(entry.relativePath)}</span></div>`;
+    if (entry.right) {
+      html += `<div class="sync-detail-row"><span class="sync-detail-label">Size:</span><span class="sync-detail-value">${entry.right.sizeHuman || humanSize(entry.right.size)}</span></div>`;
+      html += `<div class="sync-detail-row"><span class="sync-detail-label">Modified:</span><span class="sync-detail-value">${entry.right.modified || '—'}</span></div>`;
+    }
+    html += `<div style="color:#FF55FF;margin:4px 0">File exists only on the RIGHT side. Not present on left.</div>`;
+    html += `<div class="sync-detail-actions">
+      <button class="sync-detail-btn${entry.action === 'delete' ? ' active' : ''}" data-tag-action="delete" data-path="${esc(entry.relativePath)}">DELETE</button>
+      <button class="sync-detail-btn${entry.action === 'keep' ? ' active' : ''}" data-tag-action="keep" data-path="${esc(entry.relativePath)}">KEEP</button>
+      <button class="sync-detail-btn" data-view-file="${esc(entry.relativePath)}" data-side="right">Preview</button>
+    </div>`;
+  } else if (entry.status === 'identical') {
+    html += `<div class="sync-detail-row"><span class="sync-detail-label">File:</span><span class="sync-detail-value">${esc(entry.relativePath)}</span></div>`;
+    html += `<div style="color:var(--green);margin:4px 0">Files are identical on both sides.</div>`;
+    html += `<div class="sync-detail-actions">
+      <button class="sync-detail-btn${entry.action === 'skip' ? ' active' : ''}" data-tag-action="skip" data-path="${esc(entry.relativePath)}">SKIP</button>
+    </div>`;
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function renderSyncFooter() {
+  const plan = state.syncPlan;
+  if (!plan || !plan.summary) {
+    $('sync-footer').innerHTML = '';
+    return;
+  }
+  const s = plan.summary;
+  const ba = s.byAction;
+  const tagged = s.total - (ba.untagged || 0);
+
+  let html = `<span class="sync-footer-stats">`;
+  html += `Tagged: ${tagged}/${s.total}`;
+  html += ` | COPY→: ${ba.copy || 0}`;
+  html += ` | OVRW→: ${ba.overwrite || 0}`;
+  html += ` | DEL: ${ba.delete || 0}`;
+  html += ` | KEEP: ${(ba.keep || 0) + (ba['keep-right'] || 0)}`;
+  html += ` | SKIP: ${ba.skip || 0}`;
+  if (s.estimatedTransfer) html += ` | Transfer: ~${humanSize(s.estimatedTransfer)}`;
+  html += `</span>`;
+  html += `<button class="sync-gen-btn" id="sync-gen-script-btn">Generate Script (G)</button>`;
+
+  $('sync-footer').innerHTML = html;
+
+  const genBtn = $('sync-gen-script-btn');
+  if (genBtn) genBtn.addEventListener('click', () => openScriptOverlay());
+}
+
+// Helper to move sync selection
+function moveSyncSelection(delta) {
+  const list = state.syncFilteredList;
+  if (list.length === 0) return;
+  state.syncSelectedIndex = Math.max(0, Math.min(list.length - 1, state.syncSelectedIndex + delta));
+  renderSyncList();
+  renderSyncFooter();
+}
+
+function getSelectedSyncEntry() {
+  const list = state.syncFilteredList;
+  if (state.syncSelectedIndex < 0 || state.syncSelectedIndex >= list.length) return null;
+  return list[state.syncSelectedIndex];
 }
 
 // ─── Space View ───
@@ -2266,18 +2736,22 @@ document.addEventListener('keydown', (e) => {
     case 'ArrowUp':
       e.preventDefault();
       if (state.currentView === 'browser') moveSelection(state.focusedPanel, -1);
+      else if (state.currentView === 'compare') moveSyncSelection(-1);
       break;
     case 'ArrowDown':
       e.preventDefault();
       if (state.currentView === 'browser') moveSelection(state.focusedPanel, 1);
+      else if (state.currentView === 'compare') moveSyncSelection(1);
       break;
     case 'PageUp':
       e.preventDefault();
       if (state.currentView === 'browser') moveSelection(state.focusedPanel, -20);
+      else if (state.currentView === 'compare') moveSyncSelection(-20);
       break;
     case 'PageDown':
       e.preventDefault();
       if (state.currentView === 'browser') moveSelection(state.focusedPanel, 20);
+      else if (state.currentView === 'compare') moveSyncSelection(20);
       break;
     case 'Home':
       e.preventDefault();
@@ -2285,6 +2759,9 @@ document.addEventListener('keydown', (e) => {
         if (state.focusedPanel === 'left') state.leftSelectedIndex = 0;
         else state.rightSelectedIndex = 0;
         renderFileList(state.focusedPanel);
+      } else if (state.currentView === 'compare') {
+        state.syncSelectedIndex = 0;
+        renderSyncList();
       }
       break;
     case 'End':
@@ -2296,6 +2773,9 @@ document.addEventListener('keydown', (e) => {
         if (state.focusedPanel === 'left') state.leftSelectedIndex = entries.length + offset - 1;
         else state.rightSelectedIndex = entries.length + offset - 1;
         renderFileList(state.focusedPanel);
+      } else if (state.currentView === 'compare') {
+        state.syncSelectedIndex = Math.max(0, state.syncFilteredList.length - 1);
+        renderSyncList();
       }
       break;
 
@@ -2303,6 +2783,12 @@ document.addEventListener('keydown', (e) => {
       if (state.currentView === 'browser') {
         const sel = getSelectedEntry(state.focusedPanel);
         if (sel) navigateEntry(state.focusedPanel, sel);
+      } else if (state.currentView === 'compare') {
+        const syncEntry = getSelectedSyncEntry();
+        if (syncEntry) {
+          state.syncExpandedPath = state.syncExpandedPath === syncEntry.relativePath ? null : syncEntry.relativePath;
+          renderSyncList();
+        }
       }
       break;
 
@@ -2318,13 +2804,16 @@ document.addEventListener('keydown', (e) => {
       break;
 
     case '/':
+      e.preventDefault();
       if (state.currentView === 'browser') {
-        e.preventDefault();
         state.searchOpen = true;
         state.searchQuery = '';
         searchBar.classList.add('visible');
         searchInput.value = '';
         searchInput.focus();
+      } else if (state.currentView === 'compare') {
+        const si = $('sync-search-input');
+        if (si) si.focus();
       }
       break;
 
@@ -2332,49 +2821,69 @@ document.addEventListener('keydown', (e) => {
       if (state.currentView !== 'browser') showView('browser');
       break;
 
-    // Compare view shortcuts
+    // Sync Planner shortcuts
     case 'g':
     case 'G':
       if (state.currentView === 'compare') openScriptOverlay();
       break;
     case 'c':
     case 'C':
-      if (state.currentView === 'compare' && state.compareSelectedPath) {
-        tagFiles([state.compareSelectedPath], 'copy');
+      if (state.currentView === 'compare') {
+        const ce = getSelectedSyncEntry();
+        if (ce) tagFiles([ce.relativePath], 'copy');
       }
       break;
     case 'o':
     case 'O':
-      if (state.currentView === 'compare' && state.compareSelectedPath) {
-        tagFiles([state.compareSelectedPath], 'overwrite');
+      if (state.currentView === 'compare') {
+        const oe = getSelectedSyncEntry();
+        if (oe) tagFiles([oe.relativePath], 'overwrite');
       }
       break;
     case 'k':
     case 'K':
-      if (state.currentView === 'compare' && state.compareSelectedPath) {
-        tagFiles([state.compareSelectedPath], 'keep-right');
+      if (state.currentView === 'compare') {
+        const ke = getSelectedSyncEntry();
+        if (ke) tagFiles([ke.relativePath], 'keep-right');
+      }
+      break;
+    case 'd':
+    case 'D':
+      if (state.currentView === 'compare') {
+        const de = getSelectedSyncEntry();
+        if (de) tagFiles([de.relativePath], 'delete');
       }
       break;
     case 's':
     case 'S':
-      if (state.currentView === 'compare' && state.compareSelectedPath) {
-        tagFiles([state.compareSelectedPath], 'skip');
+      if (state.currentView === 'compare') {
+        const se = getSelectedSyncEntry();
+        if (se) tagFiles([se.relativePath], 'skip');
+      }
+      break;
+    case 'u':
+    case 'U':
+      if (state.currentView === 'compare') {
+        const ue = getSelectedSyncEntry();
+        if (ue) tagFiles([ue.relativePath], null);
+      }
+      break;
+    case 'A':
+      // Shift+A: Tag all missing → copy
+      if (state.currentView === 'compare' && e.shiftKey) {
+        tagAllByStatus('missing', 'copy');
       }
       break;
     case ' ':
-      if (state.currentView === 'compare' && state.compareSelectedPath) {
+      if (state.currentView === 'compare') {
         e.preventDefault();
-        // Toggle suggested tag based on status
-        const status = state.compareSelectedStatus;
-        const currentTag = getTagForPath(state.compareSelectedPath);
-        let suggestedTag = null;
-        if (status === 'missing') suggestedTag = 'copy';
-        else if (status === 'modified') suggestedTag = 'overwrite';
-        else if (status === 'orphan') suggestedTag = 'delete';
-        else if (status === 'identical') suggestedTag = 'skip';
-        // Toggle: if already tagged with suggested, remove tag
-        const newTag = currentTag === suggestedTag ? null : suggestedTag;
-        tagFiles([state.compareSelectedPath], newTag);
+        const spEntry = getSelectedSyncEntry();
+        if (spEntry) {
+          const currentTag = spEntry.action;
+          const suggestedTag = spEntry.suggestedAction || null;
+          const newTag = currentTag === suggestedTag ? null : suggestedTag;
+          tagFiles([spEntry.relativePath], newTag);
+        }
       }
       break;
   }
@@ -2894,7 +3403,7 @@ async function tagFiles(paths, action) {
     const data = await res.json();
     if (data.ok) {
       await loadSyncPlan();
-      if (state.currentView === 'compare') renderCompareView();
+      if (state.currentView === 'compare') renderSyncPlanner();
     }
   } catch(e) { console.error('tagFiles error:', e); }
 }
@@ -2909,7 +3418,7 @@ async function tagAllByStatus(status, action) {
     const data = await res.json();
     if (data.ok) {
       await loadSyncPlan();
-      if (state.currentView === 'compare') renderCompareView();
+      if (state.currentView === 'compare') renderSyncPlanner();
     }
   } catch(e) { console.error('tagAllByStatus error:', e); }
 }
@@ -3207,114 +3716,7 @@ async function tagFromDiff(action) {
   if (indicator) indicator.textContent = `Tag: ${action}`;
 }
 
-// ═══════════════ ENHANCED COMPARE VIEW ═══════════════
-
-// Override renderCompareView to include tags
-const _origRenderCompareView = renderCompareView;
-
-renderCompareView = function() {
-  const c = state.comparison;
-  if (!c) return;
-
-  // Stats with sync plan info
-  let statsHtml = `
-    <div class="compare-stat" style="color:var(--red)"><span class="stat-value">${c.stats.onlyLeftCount}</span> only left</div>
-    <div class="compare-stat" style="color:var(--yellow)"><span class="stat-value">${c.stats.modifiedCount}</span> modified</div>
-    <div class="compare-stat" style="color:var(--green)"><span class="stat-value">${c.stats.commonCount}</span> identical</div>
-    <div class="compare-stat" style="color:var(--red)"><span class="stat-value">${c.stats.onlyRightCount}</span> only right</div>
-  `;
-
-  if (state.syncPlan && state.syncPlan.summary) {
-    const sum = state.syncPlan.summary;
-    statsHtml += `<div class="compare-stat" style="color:var(--text-dim)">│ Tagged: ${sum.total - sum.byAction.untagged}/${sum.total}</div>`;
-  }
-
-  $('compare-stats').innerHTML = statsHtml;
-
-  // Three columns
-  let html = '';
-
-  // Only Left
-  html += `<div class="compare-column" style="border-right:1px solid var(--border)">
-    <div class="compare-column-header" style="color:var(--red)">Only Left (${c.onlyLeft.length})</div>
-    <div class="compare-column-list">`;
-  for (const f of c.onlyLeft) {
-    const tag = getTagForPath(f.path);
-    html += `<div class="compare-item" style="color:var(--red)" data-path="${esc(f.path)}" data-side="left" data-status="missing">${esc(f.path)} <span style="color:var(--text-dim)">${f.sizeHuman}</span>${tagBadgeHtml(tag)}</div>`;
-  }
-  html += '</div></div>';
-
-  // Modified
-  html += `<div class="compare-column" style="border-right:1px solid var(--border)">
-    <div class="compare-column-header" style="color:var(--yellow)">Modified (${c.modified.length})</div>
-    <div class="compare-column-list">`;
-  for (const m of c.modified) {
-    const arrow = m.sizeDiff > 0 ? '+' : '';
-    const tag = getTagForPath(m.relativePath);
-    html += `<div class="compare-item" style="color:var(--yellow)" data-path="${esc(m.relativePath)}" data-modified="true" data-status="modified">${esc(m.relativePath)} <span style="color:var(--text-dim)">${arrow}${humanSize(m.sizeDiff)}</span>${tagBadgeHtml(tag)}</div>`;
-  }
-  html += '</div></div>';
-
-  // Only Right
-  html += `<div class="compare-column">
-    <div class="compare-column-header" style="color:var(--red)">Only Right (${c.onlyRight.length})</div>
-    <div class="compare-column-list">`;
-  for (const f of c.onlyRight) {
-    const tag = getTagForPath(f.path);
-    html += `<div class="compare-item" style="color:var(--red)" data-path="${esc(f.path)}" data-side="right" data-status="orphan">${esc(f.path)} <span style="color:var(--text-dim)">${f.sizeHuman}</span>${tagBadgeHtml(tag)}</div>`;
-  }
-  html += '</div></div>';
-
-  $('compare-columns').innerHTML = html;
-
-  // Click handlers for compare items
-  document.querySelectorAll('.compare-item').forEach(el => {
-    el.addEventListener('click', (e) => {
-      // Deselect all
-      document.querySelectorAll('.compare-item').forEach(i => i.style.outline = '');
-      el.style.outline = '1px solid var(--header)';
-      state.compareSelectedPath = el.dataset.path;
-      state.compareSelectedStatus = el.dataset.status;
-
-      if (e.detail === 2) {
-        // Double-click: open viewer
-        const p = el.dataset.path;
-        if (el.dataset.modified) {
-          openEnhancedDiffViewer(p);
-        } else {
-          openFileViewer(el.dataset.side || 'left', p);
-        }
-      }
-    });
-  });
-
-  updateSyncStatusBar();
-};
-
-function updateSyncStatusBar() {
-  if (state.currentView === 'compare' && state.syncPlan && state.syncPlan.summary) {
-    const s = state.syncPlan.summary;
-    const ba = s.byAction;
-    $('status-right').textContent = `Tags: C:${ba.copy||0} O:${ba.overwrite||0} K:${ba['keep-right']||0} D:${ba.delete||0} S:${ba.skip||0} ?:${ba.untagged||0}`;
-  }
-}
-
-state.compareSelectedPath = null;
-state.compareSelectedStatus = null;
-
-// Override loadCompareView to also load sync plan
-const _origLoadCompareView = loadCompareView;
-loadCompareView = async function() {
-  if (!state.dualMode) return;
-  try {
-    const [compRes] = await Promise.all([
-      fetch('/api/compare'),
-      loadSyncPlan(),
-    ]);
-    state.comparison = await compRes.json();
-    renderCompareView();
-  } catch(e) { console.error(e); }
-};
+// (Enhanced Compare View merged into Sync Planner above)
 
 // ─── Start ───
 connectWS();

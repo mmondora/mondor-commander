@@ -29,6 +29,7 @@ class Walker extends EventEmitter {
   constructor(config) {
     super();
     this.config = config;
+    this.visitedInodes = new Set();
   }
 
   async walk(rootPath, side) {
@@ -36,6 +37,7 @@ class Walker extends EventEmitter {
     const files = [];
     const dirs = [];
     let scannedCount = 0;
+    this.visitedInodes.clear();
 
     const walkDir = async (dirPath, depth) => {
       if (depth > this.config.maxDepth) return;
@@ -70,6 +72,18 @@ class Walker extends EventEmitter {
 
         const isSymlink = entry.isSymbolicLink ? entry.isSymbolicLink() : false;
         const isDir = stat.isDirectory();
+
+        // Symlink loop detection: check inode for directories when following symlinks
+        if (isDir && this.config.followSymlinks) {
+          const inodeKey = stat.ino + ':' + stat.dev;
+          if (this.visitedInodes.has(inodeKey)) {
+            if (this.config.verbose) {
+              console.error(`  Skipping symlink cycle: ${fullPath}`);
+            }
+            continue;
+          }
+          this.visitedInodes.add(inodeKey);
+        }
 
         if (isDir) {
           dirs.push(relativePath);
