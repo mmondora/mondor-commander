@@ -34,6 +34,7 @@
   --fkey-bg: #000000;
   --fkey-text: #00FFFF;
   --fkey-label: #FFFFFF;
+  --zoom: 1;
 }
 
 html, body {
@@ -46,6 +47,9 @@ html, body {
   overflow: hidden;
   cursor: default;
   user-select: none;
+}
+body {
+  zoom: var(--zoom);
 }
 
 #app {
@@ -98,9 +102,7 @@ html, body {
   color: var(--header);
   padding: 2px 8px;
   font-weight: bold;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-all;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
   text-align: center;
@@ -2041,7 +2043,22 @@ function handleFKey(key) {
 }
 
 // ─── Keyboard ───
+// ── Zoom ──
+let zoomLevel = parseFloat(localStorage.getItem('mc-zoom') || '1');
+document.documentElement.style.setProperty('--zoom', zoomLevel);
+
+function applyZoom(newZoom) {
+  zoomLevel = Math.max(0.5, Math.min(3, newZoom));
+  document.documentElement.style.setProperty('--zoom', zoomLevel);
+  localStorage.setItem('mc-zoom', zoomLevel);
+}
+
 document.addEventListener('keydown', (e) => {
+  // Zoom: Ctrl+Plus / Ctrl+Minus / Ctrl+0
+  if (e.ctrlKey && (e.key === '+' || e.key === '=')) { e.preventDefault(); applyZoom(zoomLevel + 0.1); return; }
+  if (e.ctrlKey && e.key === '-') { e.preventDefault(); applyZoom(zoomLevel - 0.1); return; }
+  if (e.ctrlKey && e.key === '0') { e.preventDefault(); applyZoom(1); return; }
+
   // Quit dialog
   if (quitDialog.style.display === 'block') {
     if (e.key === 'y' || e.key === 'Y') { window.close(); return; }
