@@ -24,12 +24,48 @@ Norton Commander-style directory analyzer and comparator. Serves a retro DOS web
 
 ```bash
 git clone <repo-url>
-cd mondor-commander/mondor-commander
+cd mondor-commander
+
+# Using the start script (recommended)
+./start.sh /path/to/dir1 /path/to/dir2
+
+# Or directly with Node
+cd mondor-commander
 npm ci
 node bin/mc.js /path/to/dir1 /path/to/dir2
 ```
 
 The browser opens automatically at `http://localhost:8333`.
+
+## Start & Stop Scripts
+
+The project includes shell scripts for easy management:
+
+```bash
+# Start — compare two directories
+./start.sh ~/projects/v1 ~/projects/v2
+
+# Start — analyze a single directory
+./start.sh ~/projects/app
+
+# Start — with custom options
+./start.sh /tmp/a /tmp/b --port 9000 --no-open
+
+# Stop the running instance
+./stop.sh
+```
+
+`start.sh`:
+- Verifies Node.js >= 18 is installed
+- Runs `npm install` automatically if `node_modules` is missing
+- Prevents multiple instances (uses a PID file)
+- Handles graceful shutdown on Ctrl+C
+- Passes all extra options to `mc.js`
+
+`stop.sh`:
+- Sends SIGTERM for graceful shutdown
+- Falls back to SIGKILL after 5 seconds if the process doesn't stop
+- Cleans up the PID file
 
 ## Usage
 
@@ -124,8 +160,11 @@ Base URL: `http://localhost:8333/api`
 
 ```
 mondor-commander/
-├── bin/mc.js                  # CLI entry point
-├── src/
+├── start.sh                   # Start script with auto-setup and PID management
+├── stop.sh                    # Stop script with graceful shutdown
+├── mondor-commander/
+│   ├── bin/mc.js              # CLI entry point
+│   ├── src/
 │   ├── cli.js                 # Argument parsing and validation
 │   ├── scanner/
 │   │   ├── walker.js          # Directory traversal
@@ -137,17 +176,19 @@ mondor-commander/
 │   │   └── websocket.js       # WebSocket broadcaster
 │   └── frontend/
 │       └── index.html         # Single-file web frontend
-├── tests/                     # Vitest unit tests
-├── package.json
-├── CHANGELOG.md
-└── LICENSE
+│   ├── tests/                 # Vitest unit tests
+│   ├── package.json
+│   ├── CHANGELOG.md
+│   └── LICENSE
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `npm start -- <path1> [path2]` | Start Mondor Commander |
+| `./start.sh <path1> [path2]` | Start via wrapper script (auto-installs deps, PID management) |
+| `./stop.sh` | Stop a running instance |
+| `npm start -- <path1> [path2]` | Start directly with Node |
 | `npm test` | Run unit tests |
 | `npm run test:watch` | Run tests in watch mode |
 

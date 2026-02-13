@@ -763,7 +763,7 @@ function handleWSMessage(msg) {
     case 'analysis:complete':
       $('progress-status').textContent = 'Ready!';
       $('progress-bar').style.width = '100%';
-      setTimeout(initApp, 300);
+      setTimeout(() => initApp(), 300);
       break;
     case 'error':
       $('progress-status').textContent = `Error: ${msg.message}`;
@@ -772,7 +772,10 @@ function handleWSMessage(msg) {
 }
 
 // ─── Init ───
+let initStarted = false;
+
 async function checkStatus() {
+  if (initStarted) return;
   try {
     const res = await fetch('/api/status');
     const data = await res.json();
@@ -781,8 +784,16 @@ async function checkStatus() {
     $('progress-right').style.display = data.dualMode ? 'block' : 'none';
     if (data.status === 'ready') {
       initApp();
+    } else if (data.status === 'error') {
+      $('progress-status').textContent = 'Error during scan. Check server logs.';
+      $('progress-bar').style.width = '0%';
     } else {
-      $('progress-bar').style.width = '50%';
+      if (data.status === 'analyzing') {
+        $('progress-status').textContent = 'Analyzing...';
+        $('progress-bar').style.width = '75%';
+      } else {
+        $('progress-bar').style.width = '50%';
+      }
       setTimeout(checkStatus, 500);
     }
   } catch(e) {
@@ -791,39 +802,51 @@ async function checkStatus() {
 }
 
 async function initApp() {
-  overlay.style.display = 'none';
+  if (initStarted) return;
+  initStarted = true;
 
-  // Fetch initial data
-  const [statusRes] = await Promise.all([fetch('/api/status')]);
-  const status = await statusRes.json();
-  state.dualMode = status.dualMode;
-  state.status = 'ready';
+  try {
+    // Fetch initial data
+    const statusRes = await fetch('/api/status');
+    const status = await statusRes.json();
+    state.dualMode = status.dualMode;
+    state.config = status;
+    state.status = 'ready';
 
-  // Fetch scan summaries
-  const leftRes = await fetch('/api/scan/left');
-  state.scanLeft = await leftRes.json();
+    // Fetch scan summaries
+    const leftRes = await fetch('/api/scan/left');
+    state.scanLeft = await leftRes.json();
 
-  if (state.dualMode) {
-    const rightRes = await fetch('/api/scan/right');
-    state.scanRight = await rightRes.json();
+    if (state.dualMode) {
+      const rightRes = await fetch('/api/scan/right');
+      state.scanRight = await rightRes.json();
+    }
+
+    // Hide overlay only after data is loaded successfully
+    overlay.style.display = 'none';
+
+    // Setup panels
+    if (!state.dualMode) {
+      $('panel-right').style.display = 'none';
+      $('panel-divider').style.display = 'none';
+      document.querySelector('#browser-view').classList.add('single-mode');
+      // Disable compare F-key
+      document.querySelector('[data-key="F5"]').classList.add('disabled');
+    }
+
+    updateStatusBar();
+    showView('browser');
+    await loadBrowseData('left', '');
+    if (state.dualMode) {
+      await loadBrowseData('right', '');
+    }
+    setFocusedPanel('left');
+  } catch(e) {
+    console.error('initApp error:', e);
+    initStarted = false;
+    // Retry after a short delay
+    setTimeout(checkStatus, 500);
   }
-
-  // Setup panels
-  if (!state.dualMode) {
-    $('panel-right').style.display = 'none';
-    $('panel-divider').style.display = 'none';
-    document.querySelector('#browser-view').classList.add('single-mode');
-    // Disable compare F-key
-    document.querySelector('[data-key="F5"]').classList.add('disabled');
-  }
-
-  updateStatusBar();
-  showView('browser');
-  await loadBrowseData('left', '');
-  if (state.dualMode) {
-    await loadBrowseData('right', '');
-  }
-  setFocusedPanel('left');
 }
 
 // ─── Views ───

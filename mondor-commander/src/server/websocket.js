@@ -4,6 +4,7 @@ class WsBroadcaster {
   constructor() {
     this.clients = new Set();
     this.wss = null;
+    this.lastStatus = null;
   }
 
   attach(server) {
@@ -23,6 +24,10 @@ class WsBroadcaster {
     });
     this.wss.on('connection', (ws) => {
       this.clients.add(ws);
+      // Send current status to newly connected clients so they don't miss past events
+      if (this.lastStatus && ws.readyState === 1) {
+        ws.send(JSON.stringify(this.lastStatus));
+      }
       ws.on('close', () => this.clients.delete(ws));
       ws.on('error', () => this.clients.delete(ws));
     });
@@ -46,11 +51,13 @@ class WsBroadcaster {
   }
 
   analysisComplete() {
-    this.broadcast({ type: 'analysis:complete' });
+    this.lastStatus = { type: 'analysis:complete' };
+    this.broadcast(this.lastStatus);
   }
 
   error(message) {
-    this.broadcast({ type: 'error', message });
+    this.lastStatus = { type: 'error', message };
+    this.broadcast(this.lastStatus);
   }
 }
 
