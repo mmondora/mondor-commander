@@ -10,6 +10,7 @@ const { WsBroadcaster } = require('./websocket.js');
 const { McpManager } = require('./mcp-manager.js');
 const { ChatProxy } = require('./chat-proxy.js');
 const { createMcpRouter } = require('./mcp-api.js');
+const { buildSyncPlan } = require('../scanner/sync-plan.js');
 
 async function startServer(config) {
   const app = express();
@@ -25,6 +26,7 @@ async function startServer(config) {
     scanLeft: null,
     scanRight: null,
     analysis: null,
+    syncPlan: null,
   };
 
   // Security headers
@@ -34,6 +36,9 @@ async function startServer(config) {
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' ws://localhost:* ws://127.0.0.1:*");
     next();
   });
+
+  // JSON body parser
+  app.use(express.json());
 
   // API routes
   app.use('/api', createApiRouter(store));
@@ -165,6 +170,12 @@ async function runScan(config, store, ws) {
   store.status = 'analyzing';
   console.log('  Analyzing...');
   store.analysis = analyze(store.scanLeft, store.scanRight);
+
+  // Auto-create sync plan in dual mode
+  if (config.dualMode && store.analysis.comparison) {
+    store.syncPlan = buildSyncPlan(store.analysis.comparison, config.path1, config.path2);
+  }
+
   store.status = 'ready';
   ws.analysisComplete();
 

@@ -1,6 +1,9 @@
 const { Router } = require('express');
 const fs = require('fs/promises');
 const path = require('path');
+const { tagFile, tagBulk, tagByStatus, resetTags, getSummary, planToJSON, VALID_ACTIONS } = require('../scanner/sync-plan.js');
+const { computeHunks } = require('../scanner/diff.js');
+const { generateScript } = require('../scanner/script-generator.js');
 
 function createApiRouter(store) {
   const router = Router();
@@ -210,6 +213,145 @@ function createApiRouter(store) {
 
       const content = await fs.readFile(file.absolutePath, 'utf-8');
       res.json({ content, meta: sanitizeFile(file) });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ─── Sync Plan endpoints ───
+
+  router.get('/sync-plan', (req, res) => {
+    if (!store.syncPlan) return res.status(404).json({ error: 'No sync plan available' });
+    res.json(planToJSON(store.syncPlan));
+  });
+
+  router.post('/sync-plan/tag', (req, res) => {
+    if (!store.syncPlan) return res.status(404).json({ error: 'No sync plan available' });
+    const { paths, action } = req.body || {};
+    if (!Array.isArray(paths) || paths.length === 0) {
+      return res.status(400).json({ error: 'paths must be a non-empty array' });
+    }
+    if (action !== null && !VALID_ACTIONS.has(action)) {
+      return res.status(400).json({ error: `Invalid action: ${action}. Valid: ${[...VALID_ACTIONS].join(', ')}` });
+    }
+    try {
+      tagBulk(store.syncPlan, paths, action);
+      res.json({ ok: true, summary: getSummary(store.syncPlan) });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
+  router.post('/sync-plan/tag-all', (req, res) => {
+    if (!store.syncPlan) return res.status(404).json({ error: 'No sync plan available' });
+    const { status, action } = req.body || {};
+    if (!status) return res.status(400).json({ error: 'status is required' });
+    if (action !== null && !VALID_ACTIONS.has(action)) {
+      return res.status(400).json({ error: `Invalid action: ${action}` });
+    }
+    tagByStatus(store.syncPlan, status, action);
+    res.json({ ok: true, summary: getSummary(store.syncPlan) });
+  });
+
+  router.post('/sync-plan/reset-tags', (req, res) => {
+    if (!store.syncPlan) return res.status(404).json({ error: 'No sync plan available' });
+    resetTags(store.syncPlan);
+    res.json({ ok: true, summary: getSummary(store.syncPlan) });
+  });
+
+  router.post('/sync-plan/generate-script', (req, res) => {
+    if (!store.syncPlan) return res.status(404).json({ error: 'No sync plan available' });
+    const { format, dryRun } = req.body || {};
+    try {
+      const result = generateScript(store.syncPlan, {
+        format: format === 'powershell' ? 'powershell' : 'bash',
+        dryRun: dryRun !== false,
+      });
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // ─── Diff endpoint ───
+
+  router.get('/diff', async (req, res) => {
+    try {
+      const filePath = req.query.path || '';
+      const contextLines = Math.min(Math.max(parseInt(req.query.context) || 3, 0), 20);
+
+      if (!filePath) return res.status(400).json({ error: 'path is required' });
+      if (!store.config.dualMode) return res.status(400).json({ error: 'Diff requires dual mode' });
+
+      // Path traversal protection
+      if (filePath.includes('..') || path.isAbsolute(filePath)) {
+        return res.status(403).json({ error: 'Invalid path' });
+      }
+
+      const leftScan = store.scanLeft;
+      const rightScan = store.scanRight;
+      if (!leftScan || !rightScan) return res.status(404).json({ error: 'No scan data' });
+
+      const leftFile = leftScan.files.find(f => f.path === filePath);
+      const rightFile = rightScan.files.find(f => f.path === filePath);
+
+      if (!leftFile && !rightFile) return res.status(404).json({ error: 'File not found in either side' });
+
+      // Text file check and size limit
+      const textExts = new Set(['txt', 'md', 'js', 'ts', 'jsx', 'tsx', 'json', 'xml', 'html', 'htm',
+        'css', 'scss', 'less', 'py', 'rb', 'java', 'c', 'cpp', 'h', 'hpp', 'go', 'rs', 'sh',
+        'bash', 'zsh', 'yml', 'yaml', 'toml', 'ini', 'cfg', 'conf', 'sql', 'graphql',
+        'svelte', 'vue', 'php', 'pl', 'r', 'swift', 'kt', 'scala', 'lua', 'vim', 'el',
+        'ex', 'exs', 'erl', 'hs', 'ml', 'clj', 'cljs', 'dart', 'tf', 'dockerfile',
+        'makefile', 'cmake', 'gradle', 'properties', 'csv', 'tsv', 'log', 'diff', 'patch',
+        'gitignore', 'editorconfig', 'prettierrc', 'eslintrc', 'babelrc', 'lock']);
+
+      const checkFile = leftFile || rightFile;
+      const ext = checkFile.extension || '';
+      const isText = textExts.has(ext) || ext === '' || checkFile.name.startsWith('.');
+
+      if (!isText) return res.status(415).json({ error: 'Binary file, cannot diff' });
+
+      const maxSize = 1024 * 1024;
+      if ((leftFile && leftFile.size > maxSize) || (rightFile && rightFile.size > maxSize)) {
+        return res.status(413).json({ error: 'File too large (max 1MB)' });
+      }
+
+      // Read file contents
+      let leftContent = '', rightContent = '';
+      if (leftFile) {
+        const resolvedLeft = path.resolve(leftFile.absolutePath);
+        if (!resolvedLeft.startsWith(path.resolve(leftScan.root) + path.sep)) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
+        leftContent = await fs.readFile(leftFile.absolutePath, 'utf-8');
+      }
+      if (rightFile) {
+        const resolvedRight = path.resolve(rightFile.absolutePath);
+        if (!resolvedRight.startsWith(path.resolve(rightScan.root) + path.sep)) {
+          return res.status(403).json({ error: 'Access denied' });
+        }
+        rightContent = await fs.readFile(rightFile.absolutePath, 'utf-8');
+      }
+
+      const linesA = leftContent.split('\n');
+      const linesB = rightContent.split('\n');
+      const result = computeHunks(linesA, linesB, contextLines);
+
+      // Add tag info if sync plan exists
+      let tag = null;
+      if (store.syncPlan && store.syncPlan.entries.has(filePath)) {
+        tag = store.syncPlan.entries.get(filePath).action;
+      }
+
+      res.json({
+        path: filePath,
+        leftLines: linesA.length,
+        rightLines: linesB.length,
+        hunks: result.hunks,
+        summary: result.summary,
+        tag,
+      });
     } catch (err) {
       res.status(500).json({ error: err.message });
     }

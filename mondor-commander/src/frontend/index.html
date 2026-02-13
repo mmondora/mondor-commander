@@ -880,6 +880,123 @@ body {
 }
 .chat-send-btn:hover { background: var(--selected-bg); color: var(--selected-text); }
 
+/* ═══════════════ SCRIPT OVERLAY ═══════════════ */
+#script-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--bg-dark);
+  z-index: 250;
+  flex-direction: column;
+}
+#script-overlay.visible { display: flex; }
+
+.script-header {
+  background: var(--bg);
+  padding: 4px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.script-header-title { color: var(--header); font-weight: bold; }
+.script-close { cursor: pointer; color: var(--red); }
+.script-close:hover { color: #FF8888; }
+
+.script-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+
+.script-btn {
+  padding: 2px 10px;
+  background: var(--fkey-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+.script-btn:hover { background: var(--selected-bg); color: var(--selected-text); }
+.script-btn.active { background: var(--selected-bg); color: var(--selected-text); }
+
+.script-stats {
+  padding: 4px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.script-content {
+  flex: 1;
+  overflow: auto;
+  padding: 8px 12px;
+}
+
+.script-content pre {
+  color: var(--text);
+  font-family: 'Perfect DOS VGA 437', 'Courier New', monospace;
+  font-size: 12px;
+  white-space: pre;
+  tab-size: 4;
+}
+
+/* Script syntax colors */
+.script-content .sc-comment { color: var(--text-dim); }
+.script-content .sc-mkdir { color: var(--green); }
+.script-content .sc-cp { color: #00FFFF; }
+.script-content .sc-echo { color: var(--yellow); }
+.script-content .sc-rm, .script-content .sc-mv { color: var(--red); }
+.script-content .sc-header { color: var(--header); font-weight: bold; }
+
+/* ═══════════════ ENHANCED DIFF VIEWER ═══════════════ */
+.diff-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 4px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  font-size: 12px;
+}
+
+.diff-toolbar .diff-nav-btn {
+  padding: 1px 8px;
+  background: var(--fkey-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+}
+.diff-toolbar .diff-nav-btn:hover { background: var(--selected-bg); color: var(--selected-text); }
+
+.diff-change-counter { color: var(--header); }
+.diff-tag-indicator { color: var(--yellow); margin-left: auto; }
+
+.diff-line.current-change { outline: 2px solid var(--yellow); outline-offset: -2px; }
+
+/* Compare view tag indicators */
+.compare-item .tag-badge {
+  display: inline-block;
+  padding: 0 4px;
+  font-size: 10px;
+  margin-left: 4px;
+  border: 1px solid;
+}
+.tag-badge.tag-copy { color: var(--green); border-color: var(--green); }
+.tag-badge.tag-overwrite { color: #00FFFF; border-color: #00FFFF; }
+.tag-badge.tag-keep-right { color: var(--yellow); border-color: var(--yellow); }
+.tag-badge.tag-delete { color: var(--red); border-color: var(--red); }
+.tag-badge.tag-keep { color: var(--gray); border-color: var(--gray); }
+.tag-badge.tag-skip { color: var(--text-dim); border-color: var(--text-dim); }
+
 /* ═══════════════ SCROLLBAR ═══════════════ */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: var(--bg-dark); }
@@ -1054,6 +1171,26 @@ body {
       <button class="mcp-btn" id="mcp-invoke-cancel">Cancel</button>
     </div>
   </div>
+</div>
+
+<!-- Script Overlay -->
+<div id="script-overlay">
+  <div class="script-header">
+    <span class="script-header-title" id="script-title">┤ Sync Script ├</span>
+    <span class="script-close" id="script-close">[ ESC to close ]</span>
+  </div>
+  <div class="script-toolbar">
+    <button class="script-btn" id="script-bash-btn">Bash</button>
+    <button class="script-btn" id="script-ps-btn">PowerShell</button>
+    <span style="color:var(--border)">│</span>
+    <button class="script-btn" id="script-dryrun-btn">Dry Run</button>
+    <button class="script-btn" id="script-execute-btn">Execute</button>
+    <span style="color:var(--border)">│</span>
+    <button class="script-btn" id="script-copy-btn">Copy</button>
+    <button class="script-btn" id="script-download-btn">Download</button>
+  </div>
+  <div class="script-stats" id="script-stats"></div>
+  <div class="script-content" id="script-content"><pre>Loading...</pre></div>
 </div>
 
 <!-- Quit dialog -->
@@ -1894,6 +2031,9 @@ async function openDiffViewer(filePath) {
 
 function closeViewer() {
   state.viewerOpen = false;
+  state.diffViewerPath = null;
+  state.diffData = null;
+  state.diffCurrentBlock = -1;
   fileViewer.style.display = 'none';
 }
 
@@ -2084,9 +2224,23 @@ document.addEventListener('keydown', (e) => {
     return;
   }
 
-  // File viewer
+  // Script overlay
+  if (state.scriptOverlayOpen) {
+    if (e.key === 'Escape') { closeScriptOverlay(); e.preventDefault(); return; }
+    if (e.key === 'Tab') { e.preventDefault(); state.scriptFormat = state.scriptFormat === 'bash' ? 'powershell' : 'bash'; updateScriptToolbar(); generateAndShowScript(); return; }
+    if (e.key === 'd' || e.key === 'D') { state.scriptDryRun = !state.scriptDryRun; updateScriptToolbar(); generateAndShowScript(); return; }
+    return;
+  }
+
+  // File viewer (with diff navigation)
   if (state.viewerOpen) {
     if (e.key === 'Escape' || e.key === 'F3') { closeViewer(); e.preventDefault(); return; }
+    if (state.diffViewerPath) {
+      if (e.key === 'n' || e.key === 'N') { navigateDiffBlock(1); return; }
+      if (e.key === 'p' || e.key === 'P') { navigateDiffBlock(-1); return; }
+      if (e.key === 'o' || e.key === 'O') { tagFromDiff('overwrite'); return; }
+      if (e.key === 'k' || e.key === 'K') { tagFromDiff('keep-right'); return; }
+    }
     return;
   }
 
@@ -2176,6 +2330,52 @@ document.addEventListener('keydown', (e) => {
 
     case 'Escape':
       if (state.currentView !== 'browser') showView('browser');
+      break;
+
+    // Compare view shortcuts
+    case 'g':
+    case 'G':
+      if (state.currentView === 'compare') openScriptOverlay();
+      break;
+    case 'c':
+    case 'C':
+      if (state.currentView === 'compare' && state.compareSelectedPath) {
+        tagFiles([state.compareSelectedPath], 'copy');
+      }
+      break;
+    case 'o':
+    case 'O':
+      if (state.currentView === 'compare' && state.compareSelectedPath) {
+        tagFiles([state.compareSelectedPath], 'overwrite');
+      }
+      break;
+    case 'k':
+    case 'K':
+      if (state.currentView === 'compare' && state.compareSelectedPath) {
+        tagFiles([state.compareSelectedPath], 'keep-right');
+      }
+      break;
+    case 's':
+    case 'S':
+      if (state.currentView === 'compare' && state.compareSelectedPath) {
+        tagFiles([state.compareSelectedPath], 'skip');
+      }
+      break;
+    case ' ':
+      if (state.currentView === 'compare' && state.compareSelectedPath) {
+        e.preventDefault();
+        // Toggle suggested tag based on status
+        const status = state.compareSelectedStatus;
+        const currentTag = getTagForPath(state.compareSelectedPath);
+        let suggestedTag = null;
+        if (status === 'missing') suggestedTag = 'copy';
+        else if (status === 'modified') suggestedTag = 'overwrite';
+        else if (status === 'orphan') suggestedTag = 'delete';
+        else if (status === 'identical') suggestedTag = 'skip';
+        // Toggle: if already tagged with suggested, remove tag
+        const newTag = currentTag === suggestedTag ? null : suggestedTag;
+        tagFiles([state.compareSelectedPath], newTag);
+      }
       break;
   }
 });
@@ -2660,6 +2860,461 @@ $('chat-clear-btn').addEventListener('click', async () => {
     await fetch(`/api/mcp/chat/${state.chatSessionId}`, { method: 'DELETE' });
   } catch(e) {}
 });
+
+// ═══════════════ SYNC PLAN & TAGGING ═══════════════
+
+state.syncPlan = null;
+state.scriptOverlayOpen = false;
+state.scriptFormat = 'bash';
+state.scriptDryRun = true;
+state.scriptData = null;
+state.diffViewerPath = null;
+state.diffData = null;
+state.diffChangeBlocks = [];
+state.diffCurrentBlock = -1;
+
+const scriptOverlay = $('script-overlay');
+
+async function loadSyncPlan() {
+  try {
+    const res = await fetch('/api/sync-plan');
+    if (res.ok) {
+      state.syncPlan = await res.json();
+    }
+  } catch(e) { console.error('loadSyncPlan error:', e); }
+}
+
+async function tagFiles(paths, action) {
+  try {
+    const res = await fetch('/api/sync-plan/tag', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths, action }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      await loadSyncPlan();
+      if (state.currentView === 'compare') renderCompareView();
+    }
+  } catch(e) { console.error('tagFiles error:', e); }
+}
+
+async function tagAllByStatus(status, action) {
+  try {
+    const res = await fetch('/api/sync-plan/tag-all', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, action }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      await loadSyncPlan();
+      if (state.currentView === 'compare') renderCompareView();
+    }
+  } catch(e) { console.error('tagAllByStatus error:', e); }
+}
+
+function getTagForPath(relativePath) {
+  if (!state.syncPlan || !state.syncPlan.entries) return null;
+  const entry = state.syncPlan.entries.find(e => e.relativePath === relativePath);
+  return entry ? entry.action : null;
+}
+
+function getStatusForPath(relativePath) {
+  if (!state.syncPlan || !state.syncPlan.entries) return null;
+  const entry = state.syncPlan.entries.find(e => e.relativePath === relativePath);
+  return entry ? entry.status : null;
+}
+
+function tagBadgeHtml(action) {
+  if (!action) return '';
+  return ` <span class="tag-badge tag-${action}">${action}</span>`;
+}
+
+// ═══════════════ SCRIPT OVERLAY ═══════════════
+
+async function openScriptOverlay() {
+  state.scriptOverlayOpen = true;
+  scriptOverlay.classList.add('visible');
+  updateScriptToolbar();
+  await generateAndShowScript();
+}
+
+function closeScriptOverlay() {
+  state.scriptOverlayOpen = false;
+  scriptOverlay.classList.remove('visible');
+}
+
+function updateScriptToolbar() {
+  $('script-bash-btn').classList.toggle('active', state.scriptFormat === 'bash');
+  $('script-ps-btn').classList.toggle('active', state.scriptFormat === 'powershell');
+  $('script-dryrun-btn').classList.toggle('active', state.scriptDryRun);
+  $('script-execute-btn').classList.toggle('active', !state.scriptDryRun);
+}
+
+async function generateAndShowScript() {
+  $('script-content').innerHTML = '<pre style="color:var(--text-dim)">Generating script...</pre>';
+  try {
+    const res = await fetch('/api/sync-plan/generate-script', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ format: state.scriptFormat, dryRun: state.scriptDryRun }),
+    });
+    state.scriptData = await res.json();
+    renderScript();
+  } catch(e) {
+    $('script-content').innerHTML = `<pre style="color:var(--red)">Error: ${esc(e.message)}</pre>`;
+  }
+}
+
+function renderScript() {
+  const data = state.scriptData;
+  if (!data) return;
+
+  // Stats
+  const s = data.stats;
+  let statsHtml = `Copy: ${s.copy} | Overwrite: ${s.overwrite} | Delete: ${s.delete} | Keep-right: ${s.keepRight}`;
+  if (data.warnings.length > 0) {
+    statsHtml += ` | <span style="color:var(--yellow)">⚠ ${esc(data.warnings.join('; '))}</span>`;
+  }
+  $('script-stats').innerHTML = statsHtml;
+
+  // Syntax-highlighted script
+  const lines = data.script.split('\n');
+  let html = '';
+  for (const line of lines) {
+    html += colorizeScriptLine(line) + '\n';
+  }
+  $('script-content').innerHTML = `<pre>${html}</pre>`;
+  $('script-title').textContent = `┤ Sync Script — ${data.filename} ├`;
+}
+
+function colorizeScriptLine(line) {
+  const escaped = escHtml(line);
+  if (line.startsWith('#') || line.startsWith('//')) {
+    if (line.startsWith('# ═') || line.startsWith('# Mondor') || line.startsWith('# Generated') || line.startsWith('# Left') || line.startsWith('# Right') || line.startsWith('# Mode') || line.startsWith('# Stats')) {
+      return `<span class="sc-header">${escaped}</span>`;
+    }
+    return `<span class="sc-comment">${escaped}</span>`;
+  }
+  if (line.match(/^(mkdir|New-Item)/)) return `<span class="sc-mkdir">${escaped}</span>`;
+  if (line.match(/^(cp |Copy-Item)/)) return `<span class="sc-cp">${escaped}</span>`;
+  if (line.match(/^(echo|Write-Host)/)) return `<span class="sc-echo">${escaped}</span>`;
+  if (line.match(/^(mv |rm |Move-Item|Remove-Item)/)) return `<span class="sc-rm">${escaped}</span>`;
+  return escaped;
+}
+
+function copyScriptToClipboard() {
+  if (!state.scriptData) return;
+  navigator.clipboard.writeText(state.scriptData.script).then(() => {
+    $('script-copy-btn').textContent = 'Copied!';
+    setTimeout(() => { $('script-copy-btn').textContent = 'Copy'; }, 1500);
+  });
+}
+
+function downloadScript() {
+  if (!state.scriptData) return;
+  const blob = new Blob([state.scriptData.script], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = state.scriptData.filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Script overlay event handlers
+$('script-close').addEventListener('click', closeScriptOverlay);
+$('script-bash-btn').addEventListener('click', () => { state.scriptFormat = 'bash'; updateScriptToolbar(); generateAndShowScript(); });
+$('script-ps-btn').addEventListener('click', () => { state.scriptFormat = 'powershell'; updateScriptToolbar(); generateAndShowScript(); });
+$('script-dryrun-btn').addEventListener('click', () => { state.scriptDryRun = true; updateScriptToolbar(); generateAndShowScript(); });
+$('script-execute-btn').addEventListener('click', () => { state.scriptDryRun = false; updateScriptToolbar(); generateAndShowScript(); });
+$('script-copy-btn').addEventListener('click', copyScriptToClipboard);
+$('script-download-btn').addEventListener('click', downloadScript);
+
+// ═══════════════ ENHANCED DIFF VIEWER ═══════════════
+
+async function openEnhancedDiffViewer(filePath) {
+  state.diffViewerPath = filePath;
+  state.diffCurrentBlock = -1;
+
+  try {
+    const res = await fetch(`/api/diff?path=${encodeURIComponent(filePath)}&context=3`);
+    state.diffData = await res.json();
+
+    state.viewerOpen = true;
+    fileViewer.style.display = 'flex';
+    $('viewer-title').textContent = `┤ Diff: ${filePath} ├`;
+
+    renderEnhancedDiff();
+  } catch(e) {
+    console.error(e);
+    // Fallback to old diff viewer
+    openDiffViewer(filePath);
+  }
+}
+
+function renderEnhancedDiff() {
+  const data = state.diffData;
+  if (!data) return;
+
+  // Identify change blocks (contiguous added/removed lines in hunks)
+  state.diffChangeBlocks = [];
+  let blockIdx = 0;
+
+  let html = '<div class="diff-toolbar">';
+  html += `<button class="diff-nav-btn" id="diff-prev-btn" title="Previous change (P)">◄ Prev</button>`;
+  html += `<span class="diff-change-counter" id="diff-change-counter">Changes: ${data.summary.additions} added, ${data.summary.deletions} removed</span>`;
+  html += `<button class="diff-nav-btn" id="diff-next-btn" title="Next change (N)">Next ►</button>`;
+
+  // Tag actions
+  const tag = data.tag || getTagForPath(data.path);
+  html += `<span class="diff-tag-indicator" id="diff-tag-indicator">Tag: ${tag || 'none'}</span>`;
+  html += `<button class="diff-nav-btn" id="diff-tag-o" title="Overwrite (O)">O:Overwrite</button>`;
+  html += `<button class="diff-nav-btn" id="diff-tag-k" title="Keep right (K)">K:Keep-right</button>`;
+  html += '</div>';
+
+  html += '<div class="diff-container">';
+
+  // Left pane
+  html += '<div class="diff-pane" id="diff-pane-left"><div class="diff-pane-header" style="color:var(--text)">◄ Left</div>';
+  // Right pane
+  let rightHtml = '<div class="diff-pane" id="diff-pane-right"><div class="diff-pane-header" style="color:var(--text)">Right ►</div>';
+
+  for (const hunk of data.hunks) {
+    // Hunk header
+    const hunkHeader = `@@ -${hunk.leftStart},${hunk.leftCount} +${hunk.rightStart},${hunk.rightCount} @@`;
+    html += `<div class="diff-line" style="background:rgba(85,85,255,0.2);color:var(--blue)">${escHtml(hunkHeader)}</div>`;
+    rightHtml += `<div class="diff-line" style="background:rgba(85,85,255,0.2);color:var(--blue)">${escHtml(hunkHeader)}</div>`;
+
+    let inChangeBlock = false;
+
+    for (const line of hunk.lines) {
+      const isChange = line.type === 'added' || line.type === 'removed';
+
+      if (isChange && !inChangeBlock) {
+        inChangeBlock = true;
+        state.diffChangeBlocks.push(blockIdx);
+      } else if (!isChange) {
+        inChangeBlock = false;
+      }
+
+      const bid = isChange ? ` data-block="${blockIdx}"` : '';
+
+      if (line.type === 'context') {
+        html += `<div class="diff-line unchanged"><span class="diff-line-num">${line.lineA || ''}</span>${escHtml(line.text)}</div>`;
+        rightHtml += `<div class="diff-line unchanged"><span class="diff-line-num">${line.lineB || ''}</span>${escHtml(line.text)}</div>`;
+      } else if (line.type === 'removed') {
+        html += `<div class="diff-line removed"${bid}><span class="diff-line-num">${line.lineA || ''}</span>${escHtml(line.text)}</div>`;
+        rightHtml += `<div class="diff-line removed"${bid}><span class="diff-line-num"></span></div>`;
+      } else if (line.type === 'added') {
+        html += `<div class="diff-line added"${bid}><span class="diff-line-num"></span></div>`;
+        rightHtml += `<div class="diff-line added"${bid}><span class="diff-line-num">${line.lineB || ''}</span>${escHtml(line.text)}</div>`;
+      }
+
+      if (isChange) blockIdx++;
+    }
+  }
+
+  if (data.hunks.length === 0) {
+    html += '<div class="diff-line unchanged" style="color:var(--green);padding:8px">Files are identical</div>';
+    rightHtml += '<div class="diff-line unchanged" style="color:var(--green);padding:8px">Files are identical</div>';
+  }
+
+  html += '</div><div class="diff-separator"></div>';
+  html += rightHtml + '</div>';
+  html += '</div>';
+
+  $('viewer-content').innerHTML = html;
+  $('viewer-meta').textContent = `Left: ${data.leftLines} lines | Right: ${data.rightLines} lines | ${data.summary.additions} added, ${data.summary.deletions} removed`;
+
+  // Sync scroll
+  const leftPane = $('diff-pane-left');
+  const rightPane = $('diff-pane-right');
+  if (leftPane && rightPane) {
+    let syncing = false;
+    leftPane.addEventListener('scroll', () => {
+      if (syncing) return;
+      syncing = true;
+      rightPane.scrollTop = leftPane.scrollTop;
+      syncing = false;
+    });
+    rightPane.addEventListener('scroll', () => {
+      if (syncing) return;
+      syncing = true;
+      leftPane.scrollTop = rightPane.scrollTop;
+      syncing = false;
+    });
+  }
+
+  // Navigation button handlers
+  const prevBtn = $('diff-prev-btn');
+  const nextBtn = $('diff-next-btn');
+  if (prevBtn) prevBtn.addEventListener('click', () => navigateDiffBlock(-1));
+  if (nextBtn) nextBtn.addEventListener('click', () => navigateDiffBlock(1));
+
+  // Tag buttons
+  const tagO = $('diff-tag-o');
+  const tagK = $('diff-tag-k');
+  if (tagO) tagO.addEventListener('click', () => tagFromDiff('overwrite'));
+  if (tagK) tagK.addEventListener('click', () => tagFromDiff('keep-right'));
+}
+
+function navigateDiffBlock(delta) {
+  if (state.diffChangeBlocks.length === 0) return;
+
+  // Remove current highlight
+  document.querySelectorAll('.diff-line.current-change').forEach(el => el.classList.remove('current-change'));
+
+  // Find unique block indices
+  const uniqueBlocks = [...new Set(state.diffChangeBlocks)];
+  if (uniqueBlocks.length === 0) return;
+
+  // Find current position in unique blocks
+  let currentIdx = -1;
+  if (state.diffCurrentBlock >= 0) {
+    currentIdx = uniqueBlocks.indexOf(state.diffCurrentBlock);
+  }
+
+  // Move
+  let newIdx = currentIdx + delta;
+  if (newIdx < 0) newIdx = uniqueBlocks.length - 1;
+  if (newIdx >= uniqueBlocks.length) newIdx = 0;
+
+  state.diffCurrentBlock = uniqueBlocks[newIdx];
+
+  // Highlight and scroll to block
+  const elements = document.querySelectorAll(`[data-block="${state.diffCurrentBlock}"]`);
+  elements.forEach(el => el.classList.add('current-change'));
+
+  if (elements.length > 0) {
+    elements[0].scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+
+  // Update counter
+  const counter = $('diff-change-counter');
+  if (counter) counter.textContent = `Change ${newIdx + 1}/${uniqueBlocks.length}`;
+}
+
+async function tagFromDiff(action) {
+  if (!state.diffViewerPath) return;
+  await tagFiles([state.diffViewerPath], action);
+
+  // Update indicator
+  const indicator = $('diff-tag-indicator');
+  if (indicator) indicator.textContent = `Tag: ${action}`;
+}
+
+// ═══════════════ ENHANCED COMPARE VIEW ═══════════════
+
+// Override renderCompareView to include tags
+const _origRenderCompareView = renderCompareView;
+
+renderCompareView = function() {
+  const c = state.comparison;
+  if (!c) return;
+
+  // Stats with sync plan info
+  let statsHtml = `
+    <div class="compare-stat" style="color:var(--red)"><span class="stat-value">${c.stats.onlyLeftCount}</span> only left</div>
+    <div class="compare-stat" style="color:var(--yellow)"><span class="stat-value">${c.stats.modifiedCount}</span> modified</div>
+    <div class="compare-stat" style="color:var(--green)"><span class="stat-value">${c.stats.commonCount}</span> identical</div>
+    <div class="compare-stat" style="color:var(--red)"><span class="stat-value">${c.stats.onlyRightCount}</span> only right</div>
+  `;
+
+  if (state.syncPlan && state.syncPlan.summary) {
+    const sum = state.syncPlan.summary;
+    statsHtml += `<div class="compare-stat" style="color:var(--text-dim)">│ Tagged: ${sum.total - sum.byAction.untagged}/${sum.total}</div>`;
+  }
+
+  $('compare-stats').innerHTML = statsHtml;
+
+  // Three columns
+  let html = '';
+
+  // Only Left
+  html += `<div class="compare-column" style="border-right:1px solid var(--border)">
+    <div class="compare-column-header" style="color:var(--red)">Only Left (${c.onlyLeft.length})</div>
+    <div class="compare-column-list">`;
+  for (const f of c.onlyLeft) {
+    const tag = getTagForPath(f.path);
+    html += `<div class="compare-item" style="color:var(--red)" data-path="${esc(f.path)}" data-side="left" data-status="missing">${esc(f.path)} <span style="color:var(--text-dim)">${f.sizeHuman}</span>${tagBadgeHtml(tag)}</div>`;
+  }
+  html += '</div></div>';
+
+  // Modified
+  html += `<div class="compare-column" style="border-right:1px solid var(--border)">
+    <div class="compare-column-header" style="color:var(--yellow)">Modified (${c.modified.length})</div>
+    <div class="compare-column-list">`;
+  for (const m of c.modified) {
+    const arrow = m.sizeDiff > 0 ? '+' : '';
+    const tag = getTagForPath(m.relativePath);
+    html += `<div class="compare-item" style="color:var(--yellow)" data-path="${esc(m.relativePath)}" data-modified="true" data-status="modified">${esc(m.relativePath)} <span style="color:var(--text-dim)">${arrow}${humanSize(m.sizeDiff)}</span>${tagBadgeHtml(tag)}</div>`;
+  }
+  html += '</div></div>';
+
+  // Only Right
+  html += `<div class="compare-column">
+    <div class="compare-column-header" style="color:var(--red)">Only Right (${c.onlyRight.length})</div>
+    <div class="compare-column-list">`;
+  for (const f of c.onlyRight) {
+    const tag = getTagForPath(f.path);
+    html += `<div class="compare-item" style="color:var(--red)" data-path="${esc(f.path)}" data-side="right" data-status="orphan">${esc(f.path)} <span style="color:var(--text-dim)">${f.sizeHuman}</span>${tagBadgeHtml(tag)}</div>`;
+  }
+  html += '</div></div>';
+
+  $('compare-columns').innerHTML = html;
+
+  // Click handlers for compare items
+  document.querySelectorAll('.compare-item').forEach(el => {
+    el.addEventListener('click', (e) => {
+      // Deselect all
+      document.querySelectorAll('.compare-item').forEach(i => i.style.outline = '');
+      el.style.outline = '1px solid var(--header)';
+      state.compareSelectedPath = el.dataset.path;
+      state.compareSelectedStatus = el.dataset.status;
+
+      if (e.detail === 2) {
+        // Double-click: open viewer
+        const p = el.dataset.path;
+        if (el.dataset.modified) {
+          openEnhancedDiffViewer(p);
+        } else {
+          openFileViewer(el.dataset.side || 'left', p);
+        }
+      }
+    });
+  });
+
+  updateSyncStatusBar();
+};
+
+function updateSyncStatusBar() {
+  if (state.currentView === 'compare' && state.syncPlan && state.syncPlan.summary) {
+    const s = state.syncPlan.summary;
+    const ba = s.byAction;
+    $('status-right').textContent = `Tags: C:${ba.copy||0} O:${ba.overwrite||0} K:${ba['keep-right']||0} D:${ba.delete||0} S:${ba.skip||0} ?:${ba.untagged||0}`;
+  }
+}
+
+state.compareSelectedPath = null;
+state.compareSelectedStatus = null;
+
+// Override loadCompareView to also load sync plan
+const _origLoadCompareView = loadCompareView;
+loadCompareView = async function() {
+  if (!state.dualMode) return;
+  try {
+    const [compRes] = await Promise.all([
+      fetch('/api/compare'),
+      loadSyncPlan(),
+    ]);
+    state.comparison = await compRes.json();
+    renderCompareView();
+  } catch(e) { console.error(e); }
+};
 
 // ─── Start ───
 connectWS();
