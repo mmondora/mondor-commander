@@ -841,6 +841,37 @@ body {
   border-top: 1px solid var(--border);
 }
 
+/* Photo action buttons */
+.photo-group-actions {
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.photo-action-btn {
+  padding: 3px 10px;
+  background: var(--fkey-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.photo-action-btn:hover { background: var(--selected-bg); color: var(--selected-text); }
+.photo-action-btn.queued { background: var(--green); color: #000; border-color: var(--green); }
+.photo-action-btn.danger { color: var(--red); }
+.photo-action-btn.danger:hover { background: var(--red); color: #fff; }
+.photo-compare-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+.photo-thumb-card.override-best { border-color: var(--green) !important; }
+
 /* ═══════════════ FILE VIEWER MODAL ═══════════════ */
 #file-viewer {
   display: none;
@@ -1692,6 +1723,8 @@ const state = {
   hasPhotos: false,
   photoCompareOpen: false,
   photoSortBy: 'size', // size | similarity | date
+  photoBestOverrides: {}, // groupId → absolutePath of manually chosen best
+  photoScriptOpen: false,
 };
 
 // ─── DOM refs ───
@@ -2844,6 +2877,10 @@ function renderPhotosView() {
     for (const group of groups) {
       const simPct = group.similarity != null ? group.similarity : '?';
       const consensusLabel = group.consensusLevel === 3 ? '3/3' : '2/3';
+      const bestMember = getGroupBest(group);
+      const otherCount = group.members.length - 1;
+      const saveSize = group.totalSize - (bestMember ? bestMember.size : 0);
+
       html += `<div class="photo-group" data-group-id="${group.id}">
         <div class="photo-group-header">
           <span>${group.members.length} visually similar photos &mdash; Similarity: <span style="color:var(--green)">${simPct}%</span> &mdash; Consensus: ${consensusLabel}</span>
@@ -2854,20 +2891,27 @@ function renderPhotosView() {
       for (const m of group.members) {
         const side = m.side || 'left';
         const thumbUrl = '/api/photos/thumbnail?side=' + encodeURIComponent(side) + '&path=' + encodeURIComponent(m.path);
-        const bestClass = m.isBest ? 'photo-best' : '';
+        const isBest = bestMember && m.absolutePath === bestMember.absolutePath;
+        const bestClass = isBest ? 'photo-best' : '';
+        const overrideClass = state.photoBestOverrides[group.id] === m.absolutePath ? 'override-best' : '';
         const sideClass = m.side ? `side-${m.side}` : '';
         const resLabel = m.resolution || '';
-        html += `<div class="photo-thumb-card ${bestClass}" data-side="${side}" data-path="${esc(m.path)}" data-group-id="${group.id}" onclick="openPhotoCompareFromGroup('${group.id}')">
+        html += `<div class="photo-thumb-card ${bestClass} ${overrideClass}" data-side="${side}" data-path="${esc(m.path)}" data-abs-path="${esc(m.absolutePath)}" data-group-id="${group.id}" onclick="handlePhotoThumbClick(event, '${group.id}', '${esc(m.absolutePath)}')">
           <img src="${thumbUrl}" loading="lazy" alt="${esc(m.path)}">
           <div class="photo-thumb-info">${esc(m.path.split('/').pop())}</div>
           <div class="photo-thumb-info">${resLabel}${resLabel ? ' | ' : ''}${m.sizeHuman} | .${m.extension}</div>
           ${m.side ? `<div class="photo-thumb-info"><span class="photo-side-badge ${sideClass}">${m.side}</span></div>` : ''}
-          ${m.isBest ? '<div class="photo-best-badge">★ Best</div>' : ''}
+          ${isBest ? '<div class="photo-best-badge">★ Best</div>' : ''}
           ${m.meta && m.meta.exif && m.meta.exif.camera ? `<div class="photo-thumb-info">${esc(m.meta.exif.camera)}</div>` : ''}
         </div>`;
       }
 
-      html += `</div></div>`;
+      html += `</div>
+        <div class="photo-group-actions">
+          <button class="photo-action-btn" onclick="keepBestDeleteRest('${group.id}')">KEEP ★ best, DELETE ${otherCount} other${otherCount > 1 ? 's' : ''} ← save ${humanSize(saveSize)}</button>
+          <button class="photo-action-btn" onclick="openPhotoCompareFromGroup('${group.id}')">👁 Compare</button>
+        </div>
+      </div>`;
     }
   } else {
     html += `<div class="photo-stats-section" style="text-align:center;color:var(--green)">No visual duplicates found at threshold "${pa.threshold}"</div>`;
@@ -2877,9 +2921,14 @@ function renderPhotosView() {
 
   // Batch bar
   const groupCount = pa.visualDuplicates ? pa.visualDuplicates.length : 0;
-  $('photos-batch-bar').innerHTML = groupCount > 0
-    ? `${groupCount} groups total`
-    : '';
+  if (groupCount > 0) {
+    $('photos-batch-bar').innerHTML = `
+      ${groupCount} groups total
+      <button class="photos-batch-btn" onclick="keepBestAllGroups()">Batch: keep best in ALL ${groupCount} groups</button>
+    `;
+  } else {
+    $('photos-batch-bar').innerHTML = '';
+  }
 }
 
 function getGroupDate(group) {
@@ -2925,6 +2974,112 @@ function renderPhotoStatsSection(label, stats) {
   return html;
 }
 
+// Determine the best member of a group (manual override takes priority)
+function getGroupBest(group) {
+  const override = state.photoBestOverrides[group.id];
+  if (override) {
+    const found = group.members.find(m => m.absolutePath === override);
+    if (found) return found;
+  }
+  return group.members.find(m => m.isBest) || group.members[0];
+}
+
+// Handle thumbnail click: shift+click = override best, plain click = compare
+function handlePhotoThumbClick(event, groupId, absolutePath) {
+  if (event.shiftKey || event.ctrlKey || event.metaKey) {
+    // Override best version
+    state.photoBestOverrides[groupId] = absolutePath;
+    renderPhotosView();
+  } else {
+    openPhotoCompareFromGroup(groupId);
+  }
+}
+
+// Keep best, delete rest for a single group — returns action list
+function getGroupDeleteActions(group) {
+  const best = getGroupBest(group);
+  if (!best) return [];
+  return group.members
+    .filter(m => m.absolutePath !== best.absolutePath)
+    .map(m => ({ path: m.absolutePath, size: m.size, sizeHuman: m.sizeHuman }));
+}
+
+// Keep best, delete rest for a single group — show script
+function keepBestDeleteRest(groupId) {
+  const pa = state.photoAnalysis;
+  if (!pa) return;
+  const group = pa.visualDuplicates.find(g => g.id === groupId);
+  if (!group) return;
+  const actions = getGroupDeleteActions(group);
+  if (actions.length === 0) return;
+  showPhotoScript(actions, `Keep best in group ${groupId}`);
+}
+
+// Keep best in ALL groups — show script
+function keepBestAllGroups() {
+  const pa = state.photoAnalysis;
+  if (!pa || !pa.visualDuplicates) return;
+  const allActions = [];
+  for (const group of pa.visualDuplicates) {
+    allActions.push(...getGroupDeleteActions(group));
+  }
+  if (allActions.length === 0) return;
+  showPhotoScript(allActions, 'Keep best in ALL groups');
+}
+
+// Keep one specific photo, delete all others in its group
+function keepPhotoDeleteOthers(groupId, keepAbsPath) {
+  const pa = state.photoAnalysis;
+  if (!pa) return;
+  const group = pa.visualDuplicates.find(g => g.id === groupId);
+  if (!group) return;
+  const actions = group.members
+    .filter(m => m.absolutePath !== keepAbsPath)
+    .map(m => ({ path: m.absolutePath, size: m.size, sizeHuman: m.sizeHuman }));
+  if (actions.length === 0) return;
+  showPhotoScript(actions, 'Keep selected photo, delete others');
+}
+
+// Generate and show a photo cleanup script
+function showPhotoScript(deleteActions, description) {
+  const totalSize = deleteActions.reduce((s, a) => s + a.size, 0);
+  const ts = new Date().toISOString().replace(/[-:T]/g, '').substring(0, 14);
+  let script = `#!/bin/bash\n`;
+  script += `# Mondor Commander — Photo Cleanup Script\n`;
+  script += `# Generated: ${new Date().toISOString()}\n`;
+  script += `# ${description}\n`;
+  script += `# Actions: DELETE ${deleteActions.length} files (${humanSize(totalSize)})\n`;
+  script += `# SAFE MODE — NOT executed by Mondor Commander\n\n`;
+  script += `set -euo pipefail\n`;
+  script += `echo "=== Mondor Commander Photo Cleanup — ${deleteActions.length} deletions (${humanSize(totalSize)}) ==="\n`;
+  script += `read -p "Review above, then proceed? [y/N] " confirm\n`;
+  script += `[[ "$confirm" =~ ^[Yy]$ ]] || exit 0\n\n`;
+  script += `# Staging deleted files to /tmp for safety\n`;
+  script += `STAGING="/tmp/mc-photo-deleted-${ts}"\n`;
+  script += `mkdir -p "$STAGING"\n\n`;
+
+  for (const a of deleteActions) {
+    const basename = a.path.split('/').pop();
+    script += `# DELETE: ${basename} (${a.sizeHuman})\n`;
+    script += `mv "${a.path}" "$STAGING/${basename}"\n\n`;
+  }
+
+  script += `echo "Done. ${deleteActions.length} files moved to $STAGING"\n`;
+  script += `echo "To undo: move files back from $STAGING"\n`;
+  script += `# Generated by Mondor Commander — SAFE MODE — not auto-executed\n`;
+
+  // Show in script overlay (reuse existing overlay)
+  state.scriptData = {
+    script,
+    filename: `mc-photo-cleanup-${ts}.sh`,
+    stats: { copy: 0, overwrite: 0, delete: deleteActions.length, keepRight: 0 },
+    warnings: [],
+  };
+  state.scriptOverlayOpen = true;
+  scriptOverlay.classList.add('visible');
+  renderScript();
+}
+
 function openPhotoCompareFromGroup(groupId) {
   const pa = state.photoAnalysis;
   if (!pa) return;
@@ -2937,22 +3092,28 @@ function openPhotoCompareFromGroup(groupId) {
   const simLabel = group.similarity != null ? `${group.similarity}% similar` : '';
   $('photo-compare-title').textContent = `┤ Photo Compare — ${simLabel} ├`;
 
+  const best = getGroupBest(group);
   let html = '';
   for (let i = 0; i < group.members.length; i++) {
     const m = group.members[i];
     const side = m.side || 'left';
+    const isBest = best && m.absolutePath === best.absolutePath;
     const previewUrl = '/api/photos/preview?side=' + encodeURIComponent(side) + '&path=' + encodeURIComponent(m.path);
+    const otherCount = group.members.length - 1;
 
     html += `<div class="photo-compare-side">
       <img src="${previewUrl}" alt="${esc(m.path)}">
       <div class="photo-compare-meta">
-        <div style="color:var(--header);font-weight:bold">${m.isBest ? '★ ' : ''}${esc(m.path.split('/').pop())}</div>
+        <div style="color:var(--header);font-weight:bold">${isBest ? '★ ' : ''}${esc(m.path.split('/').pop())}</div>
         ${m.resolution ? `<div><span class="exif-label">Resolution:</span> <span class="exif-value">${m.resolution} (${m.meta ? m.meta.megapixels : '?'} MP)</span></div>` : ''}
         <div><span class="exif-label">Size:</span> <span class="exif-value">${m.sizeHuman}</span> | <span class="exif-label">Format:</span> <span class="exif-value">.${m.extension}</span></div>
         ${m.meta && m.meta.exif ? renderExifMeta(m.meta.exif) : ''}
         <div><span class="exif-label">Side:</span> <span class="exif-value">${side}</span></div>
         <div><span class="exif-label">Quality Score:</span> <span class="exif-value">${m.qualityScore.toFixed(2)}</span></div>
         <div style="font-size:10px;color:var(--text-dim);margin-top:4px">${esc(m.path)}</div>
+      </div>
+      <div class="photo-compare-actions">
+        <button class="photo-action-btn" onclick="keepPhotoDeleteOthers('${group.id}', '${esc(m.absolutePath)}')">KEEP this, DELETE ${otherCount} other${otherCount > 1 ? 's' : ''}</button>
       </div>
     </div>`;
 
@@ -2987,6 +3148,10 @@ function closePhotoCompare() {
 
 $('photo-compare-close').addEventListener('click', closePhotoCompare);
 window.openPhotoCompareFromGroup = openPhotoCompareFromGroup;
+window.handlePhotoThumbClick = handlePhotoThumbClick;
+window.keepBestDeleteRest = keepBestDeleteRest;
+window.keepBestAllGroups = keepBestAllGroups;
+window.keepPhotoDeleteOthers = keepPhotoDeleteOthers;
 
 // ─── Dashboard PHOTOS strip (in browser view) ───
 function renderDashboardPhotos() {
@@ -3037,7 +3202,8 @@ function renderDashboardPhotos() {
   // Actions
   html += `<div class="dashboard-photos-actions">`;
   if (pa.totalVisualDuplicateGroups > 0) {
-    html += `<button class="photos-batch-btn" onclick="showView('photos')">Browse Visual Duplicates (F8)</button>`;
+    html += `<button class="photos-batch-btn" onclick="showView('photos')">Browse Visual Duplicates (F8)</button> `;
+    html += `<button class="photos-batch-btn" onclick="keepBestAllGroups()">Script: keep best, delete rest</button>`;
   }
   html += `</div>`;
 
