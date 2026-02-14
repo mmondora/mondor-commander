@@ -34,7 +34,9 @@
     "glob": "^10.0.0",
     "open": "^10.0.0",
     "ws": "^8.16.0",
-    "@modelcontextprotocol/sdk": "^1.12.1"
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "sharp": "^0.33.0",
+    "exifr": "^7.1.0"
   },
   "devDependencies": {
     "vitest": "^3.2.4"

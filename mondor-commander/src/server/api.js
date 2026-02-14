@@ -4,6 +4,8 @@ const path = require('path');
 const { tagFile, tagBulk, tagByStatus, resetTags, getSummary, planToJSON, VALID_ACTIONS } = require('../scanner/sync-plan.js');
 const { computeHunks } = require('../scanner/diff.js');
 const { generateScript } = require('../scanner/script-generator.js');
+const { generateThumbnail, generatePreview } = require('../scanner/photos/thumbnailer.js');
+const { hammingDistance } = require('../scanner/photos/hasher.js');
 
 function createApiRouter(store) {
   const router = Router();
@@ -355,6 +357,99 @@ function createApiRouter(store) {
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
+  });
+
+  // ─── Photo endpoints ───
+
+  router.get('/photos/stats', (req, res) => {
+    if (!store.photoAnalysis) return res.status(404).json({ error: 'No photo analysis data' });
+    res.json(store.photoAnalysis);
+  });
+
+  router.get('/photos/visual-duplicates', (req, res) => {
+    if (!store.photoAnalysis) return res.status(404).json({ error: 'No photo analysis data' });
+    res.json(store.photoAnalysis.visualDuplicates);
+  });
+
+  router.get('/photos/thumbnail', async (req, res) => {
+    try {
+      const side = req.query.side || 'left';
+      const filePath = req.query.path || '';
+      const scan = side === 'right' ? store.scanRight : store.scanLeft;
+      if (!scan) return res.status(404).json({ error: 'No scan data' });
+
+      const file = scan.files.find(f => f.path === filePath);
+      if (!file || !file.isPhoto) return res.status(404).json({ error: 'Photo not found' });
+
+      // Path traversal protection
+      const resolvedFile = path.resolve(file.absolutePath);
+      const resolvedRoot = path.resolve(scan.root);
+      if (!resolvedFile.startsWith(resolvedRoot + path.sep) && resolvedFile !== resolvedRoot) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const buffer = await generateThumbnail(file.absolutePath);
+      res.type('image/jpeg').send(buffer);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.get('/photos/preview', async (req, res) => {
+    try {
+      const side = req.query.side || 'left';
+      const filePath = req.query.path || '';
+      const scan = side === 'right' ? store.scanRight : store.scanLeft;
+      if (!scan) return res.status(404).json({ error: 'No scan data' });
+
+      const file = scan.files.find(f => f.path === filePath);
+      if (!file || !file.isPhoto) return res.status(404).json({ error: 'Photo not found' });
+
+      // Path traversal protection
+      const resolvedFile = path.resolve(file.absolutePath);
+      const resolvedRoot = path.resolve(scan.root);
+      if (!resolvedFile.startsWith(resolvedRoot + path.sep) && resolvedFile !== resolvedRoot) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      const buffer = await generatePreview(file.absolutePath);
+      res.type('image/jpeg').send(buffer);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  router.get('/photos/compare', (req, res) => {
+    if (!store.photoAnalysis) return res.status(404).json({ error: 'No photo analysis data' });
+
+    const leftPath = req.query.left || '';
+    const rightPath = req.query.right || '';
+
+    // Find both files across scans
+    const allFiles = [
+      ...(store.scanLeft ? store.scanLeft.files : []),
+      ...(store.scanRight ? store.scanRight.files : []),
+    ];
+
+    const leftFile = allFiles.find(f => f.path === leftPath || f.absolutePath === leftPath);
+    const rightFile = allFiles.find(f => f.path === rightPath || f.absolutePath === rightPath);
+
+    if (!leftFile || !rightFile) return res.status(404).json({ error: 'File(s) not found' });
+
+    const h1 = leftFile.photo && leftFile.photo.hashes;
+    const h2 = rightFile.photo && rightFile.photo.hashes;
+
+    const similarity = (h1 && h2) ? {
+      pHash: hammingDistance(h1.pHash, h2.pHash),
+      dHash: hammingDistance(h1.dHash, h2.dHash),
+      aHash: hammingDistance(h1.aHash, h2.aHash),
+    } : null;
+
+    res.json({
+      left: { path: leftFile.path, size: leftFile.size, sizeHuman: leftFile.sizeHuman, meta: leftFile.photo ? leftFile.photo.meta : null },
+      right: { path: rightFile.path, size: rightFile.size, sizeHuman: rightFile.sizeHuman, meta: rightFile.photo ? rightFile.photo.meta : null },
+      similarity,
+    });
   });
 
   return router;

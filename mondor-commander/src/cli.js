@@ -20,6 +20,8 @@ program
   .option('--no-hash', 'Skip SHA-256 hashing (faster, no duplicate detection)')
   .option('--follow-symlinks', 'Follow symbolic links', false)
   .option('--mcp-config <path>', 'Path to MCP servers config file (mcp-servers.json)')
+  .option('--no-photos', 'Skip photo analysis')
+  .option('--photo-threshold <level>', 'Visual duplicate sensitivity: exact|similar|loose|number', 'exact')
   .option('-v, --verbose', 'Verbose logging', false)
   .action(async (path1, path2, options) => {
     try {
@@ -47,6 +49,11 @@ program
         }
       }
 
+      // Parse photo threshold: named level or numeric
+      let photoThreshold = options.photoThreshold || 'exact';
+      const parsedThreshold = parseInt(photoThreshold, 10);
+      if (!isNaN(parsedThreshold)) photoThreshold = parsedThreshold;
+
       const config = {
         path1: resolvedPath1,
         path2: resolvedPath2,
@@ -60,6 +67,8 @@ program
         verbose: options.verbose,
         dualMode: !!resolvedPath2,
         mcpConfig,
+        photos: options.photos,
+        photoThreshold,
       };
 
       if (config.verbose) {

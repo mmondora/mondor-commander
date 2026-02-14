@@ -11,6 +11,7 @@ const { McpManager } = require('./mcp-manager.js');
 const { ChatProxy } = require('./chat-proxy.js');
 const { createMcpRouter } = require('./mcp-api.js');
 const { buildSyncPlan } = require('../scanner/sync-plan.js');
+const { analyzePhotos } = require('../scanner/photos/analyzer.js');
 
 async function startServer(config) {
   const app = express();
@@ -27,13 +28,14 @@ async function startServer(config) {
     scanRight: null,
     analysis: null,
     syncPlan: null,
+    photoAnalysis: null,
   };
 
   // Security headers
   app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' ws://localhost:* ws://127.0.0.1:*");
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' blob: data:; connect-src 'self' ws://localhost:* ws://127.0.0.1:*");
     next();
   });
 
@@ -174,6 +176,30 @@ async function runScan(config, store, ws) {
   // Auto-create sync plan in dual mode
   if (config.dualMode && store.analysis.comparison) {
     store.syncPlan = buildSyncPlan(store.analysis.comparison, config.path1, config.path2);
+  }
+
+  // Photo analysis
+  if (config.photos !== false) {
+    const photoFiles = [
+      ...(store.scanLeft ? store.scanLeft.files.filter(f => f.isPhoto) : []),
+      ...(store.scanRight ? store.scanRight.files.filter(f => f.isPhoto) : []),
+    ];
+    if (photoFiles.length >= 5) {
+      console.log(`  Analyzing ${photoFiles.length} photos...`);
+      ws.photosStart(photoFiles.length);
+      const photoStart = Date.now();
+      store.photoAnalysis = await analyzePhotos(
+        store.scanLeft, store.scanRight,
+        config.photoThreshold || 'exact',
+        (done, total, phase) => {
+          ws.photosProgress(done, total, phase);
+        }
+      );
+      const photoDuration = Date.now() - photoStart;
+      const vdCount = store.photoAnalysis ? store.photoAnalysis.totalVisualDuplicateGroups : 0;
+      ws.photosComplete(photoDuration, vdCount);
+      console.log(`  Photos: ${photoFiles.length} analyzed, ${vdCount} visual duplicate groups (${(photoDuration/1000).toFixed(1)}s)`);
+    }
   }
 
   store.status = 'ready';

@@ -64,6 +64,18 @@ class WsBroadcaster {
     this.broadcast(this.lastStatus);
   }
 
+  photosStart(totalPhotos) {
+    this.broadcast({ type: 'photos:analysis:start', totalPhotos });
+  }
+
+  photosProgress(processed, total, phase) {
+    this.broadcast({ type: 'photos:analysis:progress', processed, total, phase });
+  }
+
+  photosComplete(duration, visualDuplicates) {
+    this.broadcast({ type: 'photos:analysis:complete', duration, visualDuplicates });
+  }
+
   error(message) {
     this.lastStatus = { type: 'error', message };
     this.broadcast(this.lastStatus);

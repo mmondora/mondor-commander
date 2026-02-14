@@ -1,6 +1,7 @@
 const fs = require('fs/promises');
 const path = require('path');
 const { EventEmitter } = require('events');
+const { PHOTO_EXTENSIONS } = require('./photos/detector.js');
 
 function humanSize(bytes) {
   if (bytes === 0) return '0 B';
@@ -102,6 +103,7 @@ class Walker extends EventEmitter {
             created: stat.birthtime.toISOString(),
             isDirectory: false,
             isSymlink,
+            isPhoto: PHOTO_EXTENSIONS.has(ext),
             permissions: permissionsString(stat.mode),
             depth: depth,
           });
