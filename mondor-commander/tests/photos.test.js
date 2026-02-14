@@ -103,17 +103,33 @@ describe('Photo Intelligence — Visual Dedup', () => {
     expect(dedup.computeQualityScore(big)).toBeGreaterThan(dedup.computeQualityScore(small));
   });
 
+  it('similarityPercent returns correct percentage', () => {
+    if (!dedup) return;
+    expect(dedup.similarityPercent(0)).toBe(100);   // 0 distance = 100% similar
+    expect(dedup.similarityPercent(64)).toBe(0);     // max distance = 0% similar
+    expect(dedup.similarityPercent(32)).toBe(50);    // half distance = 50%
+  });
+
   it('findVisualDuplicates groups identical hashes', () => {
     if (!dedup) return;
     const hash = { pHash: 'abcdef0123456789', dHash: '1234567890abcdef', aHash: 'aabb000000000000' };
     const photos = [
-      { path: 'a.jpg', absolutePath: '/a.jpg', extension: 'jpg', size: 1000, sizeHuman: '1 KB', photo: { hashes: { ...hash } } },
-      { path: 'b.jpg', absolutePath: '/b.jpg', extension: 'jpg', size: 2000, sizeHuman: '2 KB', photo: { hashes: { ...hash } } },
+      { path: 'a.jpg', absolutePath: '/a.jpg', extension: 'jpg', size: 1000, sizeHuman: '1 KB', photo: { hashes: { ...hash }, meta: { width: 4032, height: 3024, megapixels: 12.2 } } },
+      { path: 'b.jpg', absolutePath: '/b.jpg', extension: 'jpg', size: 2000, sizeHuman: '2 KB', photo: { hashes: { ...hash }, meta: { width: 4032, height: 3024, megapixels: 12.2 } } },
       { path: 'c.jpg', absolutePath: '/c.jpg', extension: 'jpg', size: 500, sizeHuman: '500 B', photo: { hashes: { pHash: '0000000000000000', dHash: '0000000000000000', aHash: '0000000000000000' } } },
     ];
     const groups = dedup.findVisualDuplicates(photos, 'exact');
     expect(groups.length).toBe(1);
     expect(groups[0].members.length).toBe(2);
+    // Verify enhanced data model fields
+    expect(groups[0].similarity).toBe(100);
+    expect(groups[0].consensusLevel).toBe(3);
+    expect(groups[0].referenceHash).toBeDefined();
+    expect(groups[0].hammingDistances).toBeDefined();
+    expect(groups[0].hammingDistances.pHash).toBe(0);
+    expect(groups[0].members[0].resolution).toBe('4032x3024');
+    expect(groups[0].members[0].format).toBeDefined();
+    expect(groups[0].members.some(m => m.isBest)).toBe(true);
   });
 
   it('findVisualDuplicates returns empty for less than 2 photos', () => {

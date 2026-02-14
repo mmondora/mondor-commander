@@ -23,6 +23,16 @@ function resolveThreshold(threshold) {
   return THRESHOLDS[threshold] || THRESHOLDS.exact;
 }
 
+function resolutionString(meta) {
+  if (!meta || !meta.width || !meta.height) return null;
+  return `${meta.width}x${meta.height}`;
+}
+
+// Convert Hamming distance to similarity percentage (64-bit hash)
+function similarityPercent(dist) {
+  return Math.round((1 - dist / 64) * 100);
+}
+
 function findVisualDuplicates(photos, threshold) {
   const maxDist = resolveThreshold(threshold);
 
@@ -71,6 +81,9 @@ function findVisualDuplicates(photos, threshold) {
     else { parent[rb] = ra; rank[ra]++; }
   }
 
+  // Track pairwise distances for groups
+  const pairDistances = new Map(); // "i:j" -> { pHash, dHash, aHash, consensus }
+
   // Compare within same + adjacent buckets
   const compared = new Set();
   for (const [key, indices] of buckets) {
@@ -92,14 +105,18 @@ function findVisualDuplicates(photos, threshold) {
         const h1 = hashed[i].photo.hashes;
         const h2 = hashed[j].photo.hashes;
 
-        // Consensus: pair is duplicate if >= 2 of 3 hashes are under threshold
-        let matches = 0;
-        if (hammingDistance(h1.pHash, h2.pHash) <= maxDist) matches++;
-        if (hammingDistance(h1.dHash, h2.dHash) <= maxDist) matches++;
-        if (hammingDistance(h1.aHash, h2.aHash) <= maxDist) matches++;
+        const dP = hammingDistance(h1.pHash, h2.pHash);
+        const dD = hammingDistance(h1.dHash, h2.dHash);
+        const dA = hammingDistance(h1.aHash, h2.aHash);
 
-        if (matches >= 2) {
+        let consensus = 0;
+        if (dP <= maxDist) consensus++;
+        if (dD <= maxDist) consensus++;
+        if (dA <= maxDist) consensus++;
+
+        if (consensus >= 2) {
           union(i, j);
+          pairDistances.set(pairKey, { pHash: dP, dHash: dD, aHash: dA, consensus });
         }
       }
     }
@@ -110,36 +127,72 @@ function findVisualDuplicates(photos, threshold) {
   for (let i = 0; i < hashed.length; i++) {
     const root = find(i);
     if (!groups.has(root)) groups.set(root, []);
-    groups.get(root).push(hashed[i]);
+    groups.get(root).push(i);
   }
 
   // Build result: only groups with 2+ members
   const result = [];
-  for (const members of groups.values()) {
-    if (members.length < 2) continue;
+  for (const memberIndices of groups.values()) {
+    if (memberIndices.length < 2) continue;
+
+    const members = memberIndices.map(i => hashed[i]);
 
     // Compute quality scores
-    const scored = members.map(m => ({ file: m, score: computeQualityScore(m) }));
+    const scored = members.map((m, idx) => ({ file: m, index: memberIndices[idx], score: computeQualityScore(m) }));
     scored.sort((a, b) => b.score - a.score);
 
     const bestVersion = scored[0].file;
     const totalSize = members.reduce((s, m) => s + m.size, 0);
     const wastedSize = totalSize - bestVersion.size;
 
+    // Compute group-level distances (average of all pairs)
+    let totalPHash = 0, totalDHash = 0, totalAHash = 0, pairCount = 0;
+    let minConsensus = 3;
+    for (let a = 0; a < memberIndices.length; a++) {
+      for (let b = a + 1; b < memberIndices.length; b++) {
+        const i = memberIndices[a], j = memberIndices[b];
+        const pk = i < j ? `${i}:${j}` : `${j}:${i}`;
+        const dist = pairDistances.get(pk);
+        if (dist) {
+          totalPHash += dist.pHash;
+          totalDHash += dist.dHash;
+          totalAHash += dist.aHash;
+          if (dist.consensus < minConsensus) minConsensus = dist.consensus;
+          pairCount++;
+        }
+      }
+    }
+
+    const avgPHash = pairCount > 0 ? Math.round(totalPHash / pairCount) : 0;
+    const avgDHash = pairCount > 0 ? Math.round(totalDHash / pairCount) : 0;
+    const avgAHash = pairCount > 0 ? Math.round(totalAHash / pairCount) : 0;
+    // Overall similarity: use the best (lowest) average distance across the 3 hashes
+    const bestAvgDist = Math.min(avgPHash, avgDHash, avgAHash);
+    const similarity = similarityPercent(bestAvgDist);
+
     result.push({
       id: `vdup-${result.length}`,
-      members: members.map(m => ({
-        path: m.path,
-        absolutePath: m.absolutePath,
-        side: m._side || null,
-        size: m.size,
-        sizeHuman: m.sizeHuman,
-        extension: m.extension,
-        hashes: m.photo.hashes,
-        meta: m.photo.meta || null,
-        qualityScore: computeQualityScore(m),
-        isBest: m === bestVersion,
-      })),
+      referenceHash: bestVersion.photo.hashes.pHash,
+      consensusLevel: minConsensus,
+      similarity,
+      hammingDistances: { pHash: avgPHash, dHash: avgDHash, aHash: avgAHash },
+      members: members.map(m => {
+        const meta = m.photo.meta || null;
+        return {
+          path: m.path,
+          absolutePath: m.absolutePath,
+          side: m._side || null,
+          size: m.size,
+          sizeHuman: m.sizeHuman,
+          extension: m.extension,
+          format: m.extension,
+          resolution: resolutionString(meta),
+          hashes: m.photo.hashes,
+          meta,
+          qualityScore: computeQualityScore(m),
+          isBest: m === bestVersion,
+        };
+      }),
       bestVersion: bestVersion.path,
       totalSize,
       wastedSize,
@@ -151,4 +204,4 @@ function findVisualDuplicates(photos, threshold) {
   return result;
 }
 
-module.exports = { findVisualDuplicates, computeQualityScore, THRESHOLDS, FORMAT_WEIGHTS, resolveThreshold };
+module.exports = { findVisualDuplicates, computeQualityScore, THRESHOLDS, FORMAT_WEIGHTS, resolveThreshold, similarityPercent };

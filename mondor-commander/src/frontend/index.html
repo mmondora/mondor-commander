@@ -602,6 +602,40 @@ body {
   text-align: center;
 }
 
+.photos-sort-bar {
+  padding: 4px 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  align-items: center;
+}
+
+.photos-sort-btn { cursor: pointer; color: var(--text-dim); }
+.photos-sort-btn:hover, .photos-sort-btn.active { color: var(--header); }
+
+.photos-batch-bar {
+  padding: 4px 12px;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.photos-batch-btn {
+  padding: 2px 8px;
+  background: var(--fkey-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+}
+.photos-batch-btn:hover { background: var(--selected-bg); color: var(--selected-text); }
+
 .photos-grid {
   flex: 1;
   overflow-y: auto;
@@ -751,6 +785,61 @@ body {
 
 .photo-compare-meta div { margin: 2px 0; }
 .photo-compare-divider { width: 1px; background: var(--border); }
+
+/* Photo mini-thumbnails in Explorer */
+.photo-mini-thumb {
+  width: 18px;
+  height: 18px;
+  object-fit: cover;
+  vertical-align: middle;
+  margin-right: 4px;
+  border: 1px solid var(--border);
+}
+
+/* Photo preview in File Viewer */
+.photo-viewer-preview {
+  text-align: center;
+  padding: 12px;
+}
+.photo-viewer-preview img {
+  max-width: 100%;
+  max-height: 60vh;
+  border: 1px solid var(--border);
+}
+.photo-viewer-exif {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--text);
+}
+.photo-viewer-exif div { margin: 2px 0; }
+.photo-viewer-exif .exif-label { color: var(--text-dim); }
+.photo-viewer-exif .exif-value { color: var(--white); }
+
+/* Dashboard PHOTOS section */
+.dashboard-photos {
+  border: 1px solid var(--border);
+  margin: 8px;
+  padding: 8px 12px;
+}
+.dashboard-photos-title {
+  color: var(--header);
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.dashboard-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.dashboard-photos-actions {
+  text-align: center;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
 
 /* ═══════════════ FILE VIEWER MODAL ═══════════════ */
 #file-viewer {
@@ -1366,6 +1455,7 @@ body {
         <div class="panel-column-headers"><span>Name</span><span>Size</span></div>
         <div class="file-list" id="file-list-right"></div>
       </div>
+      <div id="dashboard-photos-strip" class="dashboard-photos" style="display:none"></div>
     </div>
 
     <!-- Sync Planner View (F5) -->
@@ -1433,7 +1523,9 @@ body {
     <!-- Photos View (F8) -->
     <div id="photos-view">
       <div class="photos-header" id="photos-header"></div>
+      <div class="photos-sort-bar" id="photos-sort-bar"></div>
       <div class="photos-grid" id="photos-grid"></div>
+      <div class="photos-batch-bar" id="photos-batch-bar"></div>
     </div>
 
     <!-- Photo Compare Overlay -->
@@ -1599,6 +1691,7 @@ const state = {
   photoAnalysis: null,
   hasPhotos: false,
   photoCompareOpen: false,
+  photoSortBy: 'size', // size | similarity | date
 };
 
 // ─── DOM refs ───
@@ -1659,6 +1752,10 @@ function handleWSMessage(msg) {
       $('status-scan').textContent = `Photos: ${msg.visualDuplicates} visual dupe groups (${(msg.duration/1000).toFixed(1)}s)`;
       state.hasPhotos = true;
       document.querySelector('[data-key="F8"]').style.display = '';
+      // Refresh photo data for dashboard
+      fetch('/api/photos/stats').then(r => r.ok ? r.json() : null).then(data => {
+        if (data) { state.photoAnalysis = data; renderDashboardPhotos(); }
+      }).catch(() => {});
       break;
 
     // MCP messages
@@ -1770,6 +1867,7 @@ async function initApp() {
         state.hasPhotos = true;
         state.photoAnalysis = await photoRes.json();
         document.querySelector('[data-key="F8"]').style.display = '';
+        renderDashboardPhotos();
       }
     } catch(e) {
       // Photos not available
@@ -1871,6 +1969,8 @@ async function loadBrowseData(side, browsePath) {
   }
 }
 
+const PHOTO_EXTS_FE = new Set(['jpg','jpeg','png','heic','heif','webp','tiff','tif','avif','nef','cr2','arw','dng','orf','rw2','raf']);
+
 function renderFileList(side) {
   const list = side === 'left' ? $('file-list-left') : $('file-list-right');
   const entries = side === 'left' ? state.leftEntries : state.rightEntries;
@@ -1904,8 +2004,10 @@ function renderFileList(side) {
       html += `<div class="file-entry ${statusCls}${cls}" data-index="${idx}" data-side="${side}" data-path="${esc(entry.path)}" data-dir="true">
         <span class="file-name">${esc(entry.name)}/</span><span class="file-size">${entry.sizeHuman || '&lt;DIR&gt;'}</span></div>`;
     } else {
+      const isPhoto = state.hasPhotos && PHOTO_EXTS_FE.has(entry.extension);
+      const thumbHtml = isPhoto ? `<img class="photo-mini-thumb" src="/api/photos/thumbnail?side=${side}&path=${encodeURIComponent(entry.path)}" loading="lazy" onerror="this.style.display='none'">` : '';
       html += `<div class="file-entry ${statusCls}${cls}" data-index="${idx}" data-side="${side}" data-path="${esc(entry.path)}" data-dir="false">
-        <span class="file-name">${esc(entry.name)}</span><span class="file-size">${entry.sizeHuman || ''}</span></div>`;
+        <span class="file-name">${thumbHtml}${esc(entry.name)}</span><span class="file-size">${entry.sizeHuman || ''}</span></div>`;
     }
   }
 
@@ -2698,7 +2800,7 @@ function renderPhotosView() {
   const pa = state.photoAnalysis;
   if (!pa) { $('photos-header').innerHTML = 'No photo data available'; return; }
 
-  // Header with stats summary
+  // Header
   $('photos-header').innerHTML = `
     <span style="color:var(--header);font-weight:bold">${pa.totalPhotos}</span> photos analyzed &mdash;
     <span style="color:var(--red);font-weight:bold">${pa.totalVisualDuplicateGroups}</span> visual duplicate groups &mdash;
@@ -2706,23 +2808,45 @@ function renderPhotosView() {
     &mdash; threshold: <span style="color:var(--green)">${pa.threshold}</span>
   `;
 
+  // Sort bar
+  $('photos-sort-bar').innerHTML = `
+    Sort by:
+    <span class="photos-sort-btn ${state.photoSortBy === 'size' ? 'active' : ''}" data-sort="size">Wasted Size</span>
+    <span class="photos-sort-btn ${state.photoSortBy === 'similarity' ? 'active' : ''}" data-sort="similarity">Similarity</span>
+    <span class="photos-sort-btn ${state.photoSortBy === 'date' ? 'active' : ''}" data-sort="date">Date</span>
+  `;
+  document.querySelectorAll('.photos-sort-btn').forEach(el => {
+    el.addEventListener('click', () => {
+      state.photoSortBy = el.dataset.sort;
+      renderPhotosView();
+    });
+  });
+
   let html = '';
 
   // Stats sections
-  if (pa.statsLeft) {
-    html += renderPhotoStatsSection('Left', pa.statsLeft);
-  }
-  if (pa.statsRight) {
-    html += renderPhotoStatsSection('Right', pa.statsRight);
-  }
+  if (pa.statsLeft) html += renderPhotoStatsSection('Left', pa.statsLeft);
+  if (pa.statsRight) html += renderPhotoStatsSection('Right', pa.statsRight);
 
   // Visual duplicate groups
   if (pa.visualDuplicates && pa.visualDuplicates.length > 0) {
-    html += `<div class="photo-stats-section"><div class="photo-stats-title">Visual Duplicate Groups</div></div>`;
-    for (const group of pa.visualDuplicates) {
-      html += `<div class="photo-group">
+    let groups = [...pa.visualDuplicates];
+    if (state.photoSortBy === 'similarity') {
+      groups.sort((a, b) => (b.similarity || 0) - (a.similarity || 0));
+    } else if (state.photoSortBy === 'date') {
+      groups.sort((a, b) => {
+        const da = getGroupDate(a), db = getGroupDate(b);
+        return (db || 0) - (da || 0);
+      });
+    }
+    // default 'size' is already sorted by wastedSize desc from backend
+
+    for (const group of groups) {
+      const simPct = group.similarity != null ? group.similarity : '?';
+      const consensusLabel = group.consensusLevel === 3 ? '3/3' : '2/3';
+      html += `<div class="photo-group" data-group-id="${group.id}">
         <div class="photo-group-header">
-          <span>${group.members.length} visually similar photos</span>
+          <span>${group.members.length} visually similar photos &mdash; Similarity: <span style="color:var(--green)">${simPct}%</span> &mdash; Consensus: ${consensusLabel}</span>
           <span style="color:var(--red)">${humanSize(group.wastedSize)} wasted</span>
         </div>
         <div class="photo-thumbs-row">`;
@@ -2732,10 +2856,12 @@ function renderPhotosView() {
         const thumbUrl = '/api/photos/thumbnail?side=' + encodeURIComponent(side) + '&path=' + encodeURIComponent(m.path);
         const bestClass = m.isBest ? 'photo-best' : '';
         const sideClass = m.side ? `side-${m.side}` : '';
-        html += `<div class="photo-thumb-card ${bestClass}" data-side="${side}" data-path="${esc(m.path)}" onclick="openPhotoCompare(this.closest('.photo-group'))">
+        const resLabel = m.resolution || '';
+        html += `<div class="photo-thumb-card ${bestClass}" data-side="${side}" data-path="${esc(m.path)}" data-group-id="${group.id}" onclick="openPhotoCompareFromGroup('${group.id}')">
           <img src="${thumbUrl}" loading="lazy" alt="${esc(m.path)}">
-          <div class="photo-thumb-info">${esc(m.path)}</div>
-          <div class="photo-thumb-info">${m.sizeHuman} | .${m.extension}${m.side ? ` <span class="photo-side-badge ${sideClass}">${m.side}</span>` : ''}</div>
+          <div class="photo-thumb-info">${esc(m.path.split('/').pop())}</div>
+          <div class="photo-thumb-info">${resLabel}${resLabel ? ' | ' : ''}${m.sizeHuman} | .${m.extension}</div>
+          ${m.side ? `<div class="photo-thumb-info"><span class="photo-side-badge ${sideClass}">${m.side}</span></div>` : ''}
           ${m.isBest ? '<div class="photo-best-badge">★ Best</div>' : ''}
           ${m.meta && m.meta.exif && m.meta.exif.camera ? `<div class="photo-thumb-info">${esc(m.meta.exif.camera)}</div>` : ''}
         </div>`;
@@ -2748,40 +2874,49 @@ function renderPhotosView() {
   }
 
   $('photos-grid').innerHTML = html;
+
+  // Batch bar
+  const groupCount = pa.visualDuplicates ? pa.visualDuplicates.length : 0;
+  $('photos-batch-bar').innerHTML = groupCount > 0
+    ? `${groupCount} groups total`
+    : '';
+}
+
+function getGroupDate(group) {
+  for (const m of group.members) {
+    if (m.meta && m.meta.exif && m.meta.exif.dateTaken) {
+      return new Date(m.meta.exif.dateTaken).getTime();
+    }
+  }
+  return 0;
 }
 
 function renderPhotoStatsSection(label, stats) {
   let html = `<div class="photo-stats-section">
-    <div class="photo-stats-title">${label}: ${stats.totalPhotos} photos (${stats.totalPhotoSizeHuman})</div>
+    <div class="photo-stats-title">${esc(label)}: ${stats.totalPhotos} photos (${stats.totalPhotoSizeHuman})</div>
     <div class="photo-stats-grid">`;
 
-  // Format distribution
   const formats = Object.entries(stats.byFormat).sort((a,b) => b[1]-a[1]);
   if (formats.length > 0) {
     html += `<div class="photo-stat-item"><span class="photo-stat-label">Formats:</span> ${formats.map(([k,v]) => `<span class="photo-stat-value">.${k}</span> (${v})`).join(', ')}</div>`;
   }
 
-  // Camera distribution
   const cameras = Object.entries(stats.byCamera).sort((a,b) => b[1]-a[1]);
   if (cameras.length > 0) {
     html += `<div class="photo-stat-item"><span class="photo-stat-label">Cameras:</span> ${cameras.slice(0,5).map(([k,v]) => `<span class="photo-stat-value">${esc(k)}</span> (${v})`).join(', ')}${cameras.length > 5 ? ` +${cameras.length-5} more` : ''}</div>`;
   }
 
-  // Year distribution
   const years = Object.entries(stats.byYear).sort((a,b) => b[0]-a[0]);
   if (years.length > 0) {
     html += `<div class="photo-stat-item"><span class="photo-stat-label">Years:</span> ${years.slice(0,8).map(([k,v]) => `<span class="photo-stat-value">${k}</span> (${v})`).join(', ')}</div>`;
   }
 
-  // Resolution range
   if (stats.resolutionRange) {
     html += `<div class="photo-stat-item"><span class="photo-stat-label">Resolution:</span> <span class="photo-stat-value">${stats.resolutionRange.min}–${stats.resolutionRange.max} MP</span></div>`;
   }
 
-  // GPS
   html += `<div class="photo-stat-item"><span class="photo-stat-label">GPS:</span> <span class="photo-stat-value">${stats.withGps}</span> with, <span class="photo-stat-value">${stats.withoutGps}</span> without</div>`;
 
-  // Date range
   if (stats.dateRange) {
     html += `<div class="photo-stat-item"><span class="photo-stat-label">Date range:</span> <span class="photo-stat-value">${new Date(stats.dateRange.min).toLocaleDateString()} – ${new Date(stats.dateRange.max).toLocaleDateString()}</span></div>`;
   }
@@ -2790,34 +2925,59 @@ function renderPhotoStatsSection(label, stats) {
   return html;
 }
 
-function openPhotoCompare(groupEl) {
-  const cards = groupEl.querySelectorAll('.photo-thumb-card');
-  if (cards.length < 2) return;
+function openPhotoCompareFromGroup(groupId) {
+  const pa = state.photoAnalysis;
+  if (!pa) return;
+  const group = pa.visualDuplicates.find(g => g.id === groupId);
+  if (!group || group.members.length < 2) return;
 
   state.photoCompareOpen = true;
   photoCompareOverlay.style.display = 'flex';
-  $('photo-compare-title').textContent = '┤ Photo Compare ├';
+
+  const simLabel = group.similarity != null ? `${group.similarity}% similar` : '';
+  $('photo-compare-title').textContent = `┤ Photo Compare — ${simLabel} ├`;
 
   let html = '';
-  for (const card of cards) {
-    const side = card.dataset.side;
-    const filePath = card.dataset.path;
-    const previewUrl = '/api/photos/preview?side=' + encodeURIComponent(side) + '&path=' + encodeURIComponent(filePath);
+  for (let i = 0; i < group.members.length; i++) {
+    const m = group.members[i];
+    const side = m.side || 'left';
+    const previewUrl = '/api/photos/preview?side=' + encodeURIComponent(side) + '&path=' + encodeURIComponent(m.path);
 
     html += `<div class="photo-compare-side">
-      <img src="${previewUrl}" alt="${esc(filePath)}">
+      <img src="${previewUrl}" alt="${esc(m.path)}">
       <div class="photo-compare-meta">
-        <div style="color:var(--header);font-weight:bold">${esc(filePath)}</div>
-        <div>${side} side</div>
+        <div style="color:var(--header);font-weight:bold">${m.isBest ? '★ ' : ''}${esc(m.path.split('/').pop())}</div>
+        ${m.resolution ? `<div><span class="exif-label">Resolution:</span> <span class="exif-value">${m.resolution} (${m.meta ? m.meta.megapixels : '?'} MP)</span></div>` : ''}
+        <div><span class="exif-label">Size:</span> <span class="exif-value">${m.sizeHuman}</span> | <span class="exif-label">Format:</span> <span class="exif-value">.${m.extension}</span></div>
+        ${m.meta && m.meta.exif ? renderExifMeta(m.meta.exif) : ''}
+        <div><span class="exif-label">Side:</span> <span class="exif-value">${side}</span></div>
+        <div><span class="exif-label">Quality Score:</span> <span class="exif-value">${m.qualityScore.toFixed(2)}</span></div>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:4px">${esc(m.path)}</div>
       </div>
     </div>`;
 
-    if (card !== cards[cards.length - 1]) {
+    if (i < group.members.length - 1) {
       html += '<div class="photo-compare-divider"></div>';
     }
   }
 
   $('photo-compare-body').innerHTML = html;
+}
+
+function renderExifMeta(exif) {
+  let parts = [];
+  if (exif.camera) parts.push(`<div><span class="exif-label">Camera:</span> <span class="exif-value">${esc(exif.camera)}</span></div>`);
+  if (exif.lens) parts.push(`<div><span class="exif-label">Lens:</span> <span class="exif-value">${esc(exif.lens)}</span></div>`);
+  if (exif.focalLength) parts.push(`<div><span class="exif-label">Focal:</span> <span class="exif-value">${exif.focalLength}mm</span></div>`);
+  if (exif.aperture) parts.push(`<div><span class="exif-label">Aperture:</span> <span class="exif-value">f/${exif.aperture}</span></div>`);
+  if (exif.iso) parts.push(`<div><span class="exif-label">ISO:</span> <span class="exif-value">${exif.iso}</span></div>`);
+  if (exif.exposureTime) {
+    const et = exif.exposureTime < 1 ? `1/${Math.round(1/exif.exposureTime)}s` : `${exif.exposureTime}s`;
+    parts.push(`<div><span class="exif-label">Shutter:</span> <span class="exif-value">${et}</span></div>`);
+  }
+  if (exif.dateTaken) parts.push(`<div><span class="exif-label">Date:</span> <span class="exif-value">${new Date(exif.dateTaken).toLocaleString()}</span></div>`);
+  if (exif.gps) parts.push(`<div><span class="exif-label">GPS:</span> <span class="exif-value">${exif.gps.lat.toFixed(4)}, ${exif.gps.lng.toFixed(4)}</span></div>`);
+  return parts.join('');
 }
 
 function closePhotoCompare() {
@@ -2826,11 +2986,74 @@ function closePhotoCompare() {
 }
 
 $('photo-compare-close').addEventListener('click', closePhotoCompare);
-window.openPhotoCompare = openPhotoCompare;
+window.openPhotoCompareFromGroup = openPhotoCompareFromGroup;
+
+// ─── Dashboard PHOTOS strip (in browser view) ───
+function renderDashboardPhotos() {
+  const strip = $('dashboard-photos-strip');
+  if (!strip || !state.hasPhotos || !state.photoAnalysis) {
+    if (strip) strip.style.display = 'none';
+    return;
+  }
+  const pa = state.photoAnalysis;
+  strip.style.display = 'block';
+
+  let html = `<div class="dashboard-photos-title">PHOTO INTELLIGENCE</div>`;
+  html += `<div class="dashboard-photos-grid">`;
+
+  // Summary KPI
+  html += `<div><span style="color:var(--header)">${pa.totalPhotos}</span> photos</div>`;
+  html += `<div><span style="color:var(--red)">${pa.totalVisualDuplicateGroups}</span> visual dupe groups</div>`;
+  html += `<div><span style="color:var(--yellow)">${pa.totalWastedHuman}</span> recoverable</div>`;
+  html += `<div>Threshold: <span style="color:var(--green)">${pa.threshold}</span></div>`;
+
+  // Camera breakdown (top 3)
+  const cameras = {};
+  const formats = {};
+  const years = {};
+  for (const st of [pa.statsLeft, pa.statsRight].filter(Boolean)) {
+    if (st.byCamera) for (const [k, v] of Object.entries(st.byCamera)) cameras[k] = (cameras[k] || 0) + v;
+    if (st.byFormat) for (const [k, v] of Object.entries(st.byFormat)) formats[k] = (formats[k] || 0) + v;
+    if (st.byYear) for (const [k, v] of Object.entries(st.byYear)) years[k] = (years[k] || 0) + v;
+  }
+
+  const topCameras = Object.entries(cameras).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  if (topCameras.length > 0) {
+    html += `<div>Cameras: ${topCameras.map(([k, v]) => `${esc(k)} (${v})`).join(', ')}</div>`;
+  }
+
+  const topFormats = Object.entries(formats).sort((a, b) => b[1] - a[1]).slice(0, 4);
+  if (topFormats.length > 0) {
+    html += `<div>Formats: ${topFormats.map(([k, v]) => `${k.toUpperCase()} (${v})`).join(', ')}</div>`;
+  }
+
+  const topYears = Object.entries(years).sort((a, b) => b[0] - a[0]).slice(0, 4);
+  if (topYears.length > 0) {
+    html += `<div>Years: ${topYears.map(([k, v]) => `${k} (${v})`).join(', ')}</div>`;
+  }
+
+  html += `</div>`;
+
+  // Actions
+  html += `<div class="dashboard-photos-actions">`;
+  if (pa.totalVisualDuplicateGroups > 0) {
+    html += `<button class="photos-batch-btn" onclick="showView('photos')">Browse Visual Duplicates (F8)</button>`;
+  }
+  html += `</div>`;
+
+  strip.innerHTML = html;
+}
+window.showView = showView;
 
 // ─── File Viewer ───
 async function openFileViewer(side, filePath) {
   try {
+    // Check if this is a photo — show preview instead
+    const ext = filePath.split('.').pop().toLowerCase();
+    if (PHOTO_EXTS_FE.has(ext) && state.hasPhotos) {
+      return openPhotoViewer(side, filePath);
+    }
+
     const params = new URLSearchParams({ side, path: filePath });
     const res = await fetch(`/api/file-content?${params}`);
     const data = await res.json();
@@ -2863,6 +3086,40 @@ async function openFileViewer(side, filePath) {
   } catch(e) {
     console.error(e);
   }
+}
+
+async function openPhotoViewer(side, filePath) {
+  state.viewerOpen = true;
+  fileViewer.style.display = 'flex';
+  $('viewer-title').textContent = `┤ ${filePath} [${side}] ├`;
+
+  const previewUrl = `/api/photos/preview?side=${encodeURIComponent(side)}&path=${encodeURIComponent(filePath)}`;
+
+  // Try to fetch EXIF metadata from photo analysis
+  let exifHtml = '';
+  try {
+    const compareRes = await fetch(`/api/photos/compare?left=${encodeURIComponent(filePath)}&right=${encodeURIComponent(filePath)}`);
+    if (compareRes.ok) {
+      const data = await compareRes.json();
+      const meta = data.left && data.left.meta;
+      if (meta) {
+        exifHtml += `<div class="photo-viewer-exif">`;
+        if (meta.width && meta.height) exifHtml += `<div><span class="exif-label">Resolution:</span> <span class="exif-value">${meta.width}x${meta.height} (${meta.megapixels} MP)</span></div>`;
+        if (meta.format) exifHtml += `<div><span class="exif-label">Format:</span> <span class="exif-value">${meta.format}</span></div>`;
+        exifHtml += `<div><span class="exif-label">Size:</span> <span class="exif-value">${data.left.sizeHuman}</span></div>`;
+        if (meta.exif) exifHtml += renderExifMeta(meta.exif);
+        exifHtml += `</div>`;
+      }
+    }
+  } catch(e) { /* ignore */ }
+
+  $('viewer-content').innerHTML = `
+    <div class="photo-viewer-preview">
+      <img src="${previewUrl}" alt="${esc(filePath)}">
+    </div>
+    ${exifHtml}
+  `;
+  $('viewer-meta').textContent = '';
 }
 
 async function openDiffViewer(filePath) {

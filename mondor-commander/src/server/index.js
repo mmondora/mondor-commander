@@ -185,6 +185,11 @@ async function runScan(config, store, ws) {
       ...(store.scanRight ? store.scanRight.files.filter(f => f.isPhoto) : []),
     ];
     if (photoFiles.length >= 5) {
+      if (photoFiles.length > 20000) {
+        console.log(`  Warning: ${photoFiles.length} photos detected. Consider --no-photos for faster scan.`);
+      } else if (photoFiles.length > 5000) {
+        console.log(`  Note: ${photoFiles.length} photos — analysis may take a few minutes.`);
+      }
       console.log(`  Analyzing ${photoFiles.length} photos...`);
       ws.photosStart(photoFiles.length);
       const photoStart = Date.now();
