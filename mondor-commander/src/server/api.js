@@ -476,6 +476,35 @@ function getFileStatus(filePath, index, side) {
 
 function getDirStatus(dirPath, index, side) {
   if (!index) return 'directory';
+  const prefix = dirPath + path.sep;
+  const otherOnly = side === 'left' ? index.onlyRight : index.onlyLeft;
+  const thisOnly = side === 'left' ? index.onlyLeft : index.onlyRight;
+
+  // Check if ALL files under this dir are only on this side
+  let hasThisOnly = false;
+  let hasCommon = false;
+  let hasModified = false;
+  let hasOtherOnly = false;
+
+  for (const p of thisOnly) {
+    if (p.startsWith(prefix) || p === dirPath) { hasThisOnly = true; break; }
+  }
+  for (const p of otherOnly) {
+    if (p.startsWith(prefix) || p === dirPath) { hasOtherOnly = true; break; }
+  }
+  for (const p of index.common) {
+    if (p.startsWith(prefix) || p === dirPath) { hasCommon = true; break; }
+  }
+  for (const p of index.modified) {
+    if (p.startsWith(prefix) || p === dirPath) { hasModified = true; break; }
+  }
+
+  // Dir exists only on this side (no files from common, modified, or other-only)
+  if (hasThisOnly && !hasCommon && !hasModified && !hasOtherOnly) return 'only-here';
+  // Dir has some differences
+  if (hasModified || hasThisOnly || hasOtherOnly) return 'modified';
+  // All files identical
+  if (hasCommon && !hasModified && !hasThisOnly && !hasOtherOnly) return 'identical';
   return 'directory';
 }
 

@@ -164,13 +164,22 @@ body {
 .file-entry.status-directory .file-name { color: var(--white); }
 .file-entry.status-normal .file-name { color: var(--white); }
 
+/* Directory status colors */
+.file-entry.dir-only-here .file-name { color: var(--yellow); }
+.file-entry.dir-modified .file-name { color: var(--yellow); }
+.file-entry.dir-identical .file-name { color: var(--green); }
+
 .file-entry.selected.status-identical .file-name,
 .file-entry.selected.status-only-here .file-name,
 .file-entry.selected.status-modified .file-name,
 .file-entry.selected.status-directory .file-name,
-.file-entry.selected.status-normal .file-name { color: var(--selected-text); }
+.file-entry.selected.status-normal .file-name,
+.file-entry.selected.dir-only-here .file-name,
+.file-entry.selected.dir-modified .file-name,
+.file-entry.selected.dir-identical .file-name { color: var(--selected-text); }
 
 .dir-indicator { color: var(--blue); margin-left: 4px; }
+.dir-diff-icon { color: var(--yellow); margin-left: 4px; font-size: 11px; }
 
 /* ═══════════════ STATUS BAR ═══════════════ */
 #statusbar {
@@ -361,7 +370,7 @@ body {
 
 .sync-row .sync-check { width: 20px; flex-shrink: 0; text-align: center; }
 .sync-row .sync-tag-col { width: 80px; flex-shrink: 0; }
-.sync-row .sync-status-label { width: 64px; flex-shrink: 0; font-weight: bold; }
+.sync-row .sync-status-label { width: 84px; flex-shrink: 0; font-weight: bold; }
 .sync-row .sync-path { flex: 1; overflow: hidden; text-overflow: ellipsis; }
 .sync-row .sync-size { width: 70px; flex-shrink: 0; text-align: right; color: var(--text-dim); }
 .sync-row .sync-size-right { width: 70px; flex-shrink: 0; text-align: right; color: var(--text-dim); }
@@ -596,10 +605,11 @@ body {
 }
 
 .photos-header {
-  padding: 8px 12px;
+  padding: 3px 8px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
   text-align: center;
+  font-size: 12px;
 }
 
 .photos-sort-bar {
@@ -639,13 +649,13 @@ body {
 .photos-grid {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 4px;
 }
 
 .photo-group {
   border: 1px solid var(--border);
-  margin-bottom: 8px;
-  padding: 8px;
+  margin-bottom: 4px;
+  padding: 4px 6px;
 }
 
 .photo-group-header {
@@ -653,39 +663,39 @@ body {
   justify-content: space-between;
   color: var(--header);
   font-weight: bold;
-  margin-bottom: 6px;
-  font-size: 12px;
+  margin-bottom: 3px;
+  font-size: 11px;
 }
 
 .photo-thumbs-row {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   flex-wrap: wrap;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .photo-thumb-card {
   border: 1px solid var(--border);
-  padding: 4px;
+  padding: 2px;
   text-align: center;
   cursor: pointer;
   position: relative;
-  max-width: 220px;
+  max-width: 140px;
 }
 
 .photo-thumb-card:hover { border-color: var(--header); }
 .photo-thumb-card.photo-best { border-color: var(--green); }
 
 .photo-thumb-card img {
-  max-width: 200px;
-  max-height: 200px;
+  max-width: 120px;
+  max-height: 120px;
   display: block;
-  margin: 0 auto 4px;
+  margin: 0 auto 2px;
   image-rendering: auto;
 }
 
 .photo-thumb-info {
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -711,8 +721,8 @@ body {
 
 .photo-stats-section {
   border: 1px solid var(--border);
-  padding: 8px 12px;
-  margin-bottom: 8px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
 }
 
 .photo-stats-title {
@@ -724,9 +734,9 @@ body {
 
 .photo-stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 8px;
-  font-size: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 4px;
+  font-size: 11px;
 }
 
 .photo-stat-item {
@@ -1486,7 +1496,6 @@ body {
         <div class="panel-column-headers"><span>Name</span><span>Size</span></div>
         <div class="file-list" id="file-list-right"></div>
       </div>
-      <div id="dashboard-photos-strip" class="dashboard-photos" style="display:none"></div>
     </div>
 
     <!-- Sync Planner View (F5) -->
@@ -1554,6 +1563,7 @@ body {
     <!-- Photos View (F8) -->
     <div id="photos-view">
       <div class="photos-header" id="photos-header"></div>
+      <div id="dashboard-photos-strip" class="dashboard-photos" style="display:none"></div>
       <div class="photos-sort-bar" id="photos-sort-bar"></div>
       <div class="photos-grid" id="photos-grid"></div>
       <div class="photos-batch-bar" id="photos-batch-bar"></div>
@@ -1966,6 +1976,7 @@ function showView(view) {
       if (!state.hasPhotos) return;
       photosView.style.display = 'flex';
       document.querySelector('[data-key="F8"]').classList.add('active');
+      renderDashboardPhotos();
       loadPhotosView();
       break;
     case 'chat':
@@ -2032,10 +2043,13 @@ function renderFileList(side) {
     const idx = i + offset;
     const cls = idx === selectedIndex ? ' selected' : '';
     const statusCls = entry.isDirectory ? 'status-directory' : `status-${entry.status || 'normal'}`;
+    const dirStatusCls = entry.isDirectory && entry.status ? `dir-${entry.status}` : '';
 
     if (entry.isDirectory) {
-      html += `<div class="file-entry ${statusCls}${cls}" data-index="${idx}" data-side="${side}" data-path="${esc(entry.path)}" data-dir="true">
-        <span class="file-name">${esc(entry.name)}/</span><span class="file-size">${entry.sizeHuman || '&lt;DIR&gt;'}</span></div>`;
+      const diffIcon = (entry.status === 'modified') ? '<span class="dir-diff-icon">\u25B6</span>' : '';
+      const onlyIcon = (entry.status === 'only-here') ? '<span class="dir-diff-icon">+</span>' : '';
+      html += `<div class="file-entry ${statusCls} ${dirStatusCls}${cls}" data-index="${idx}" data-side="${side}" data-path="${esc(entry.path)}" data-dir="true">
+        <span class="file-name">${esc(entry.name)}/${diffIcon}${onlyIcon}</span><span class="file-size">${entry.sizeHuman || '&lt;DIR&gt;'}</span></div>`;
     } else {
       const isPhoto = state.hasPhotos && PHOTO_EXTS_FE.has(entry.extension);
       const thumbHtml = isPhoto ? `<img class="photo-mini-thumb" src="/api/photos/thumbnail?side=${side}&path=${encodeURIComponent(entry.path)}" loading="lazy" onerror="this.style.display='none'">` : '';
@@ -2069,14 +2083,28 @@ function getSelectedEntry(side) {
 function navigateEntry(side, entry) {
   if (!entry) return;
   const currentPath = side === 'left' ? state.leftPath : state.rightPath;
+  const otherSide = side === 'left' ? 'right' : 'left';
 
   if (entry.isParent) {
     // Go up
     const parts = currentPath.split('/').filter(Boolean);
     parts.pop();
-    loadBrowseData(side, parts.join('/'));
+    const newPath = parts.join('/');
+    loadBrowseData(side, newPath);
+    // Sync the other panel to the same parent path
+    loadBrowseData(otherSide, newPath);
   } else if (entry.isDirectory) {
     loadBrowseData(side, entry.path);
+    // Sync the other panel: navigate to the same folder if it exists there
+    const otherEntries = otherSide === 'left' ? state.leftEntries : state.rightEntries;
+    const matchDir = otherEntries.find(e => e.isDirectory && e.name === entry.name);
+    if (matchDir) {
+      loadBrowseData(otherSide, matchDir.path);
+    } else {
+      // Folder doesn't exist on other side - stay at current level but reload to keep in sync
+      const otherPath = otherSide === 'left' ? state.leftPath : state.rightPath;
+      loadBrowseData(otherSide, otherPath);
+    }
   } else {
     // Open file viewer
     openFileViewer(side, entry.path);
@@ -2185,12 +2213,12 @@ function renderSyncSummary() {
   };
 
   let html = makeFilter('all', 'ALL', 'var(--white)', s.total);
-  html += makeFilter('missing', 'MISS', 'var(--red)', bs.missing || 0);
-  html += `<button class="sync-quick-btn" data-bulk-status="missing" data-bulk-action="copy" title="Tag all missing → COPY">→COPY</button>`;
-  html += makeFilter('modified', 'DIFF', 'var(--yellow)', bs.modified || 0);
-  html += `<button class="sync-quick-btn" data-bulk-status="modified" data-bulk-action="overwrite" title="Tag all modified → OVERWRITE">→OVRW</button>`;
-  html += makeFilter('orphan', 'ORPHAN', '#FF55FF', bs.orphan || 0);
-  html += `<button class="sync-quick-btn" data-bulk-status="orphan" data-bulk-action="delete" title="Tag all orphan → DELETE">→DEL</button>`;
+  html += makeFilter('missing', 'ONLY LEFT', 'var(--red)', bs.missing || 0);
+  html += `<button class="sync-quick-btn" data-bulk-status="missing" data-bulk-action="copy" title="Tag all ONLY LEFT → COPY">→COPY</button>`;
+  html += makeFilter('modified', 'CHANGED', 'var(--yellow)', bs.modified || 0);
+  html += `<button class="sync-quick-btn" data-bulk-status="modified" data-bulk-action="overwrite" title="Tag all CHANGED → OVERWRITE">→OVRW</button>`;
+  html += makeFilter('orphan', 'ONLY RIGHT', '#FF55FF', bs.orphan || 0);
+  html += `<button class="sync-quick-btn" data-bulk-status="orphan" data-bulk-action="delete" title="Tag all ONLY RIGHT → DELETE">→DEL</button>`;
 
   if (state.syncShowIdentical || state.syncFilter === 'identical') {
     html += makeFilter('identical', 'IDENT', 'var(--green)', bs.identical || 0);
@@ -2293,7 +2321,7 @@ function renderSyncList() {
   let html = `<div class="sync-list-header">
     <span style="width:20px">☐</span>
     <span style="width:80px">Tag</span>
-    <span style="width:64px">Status</span>
+    <span style="width:84px">Status</span>
     <span style="flex:1">Path</span>
     <span style="width:70px;text-align:right">Left</span>
     <span style="width:70px;text-align:right">Right</span>
@@ -2314,7 +2342,7 @@ function renderSyncList() {
     html += `<div class="sync-row${selected}${tagged}" data-index="${i}" data-path="${esc(entry.relativePath)}">
       <span class="sync-check">${checked ? '☑' : '☐'}</span>
       <span class="sync-tag-col">${tagBadgeHtml(entry.action)}</span>
-      <span class="sync-status-label ${statusClass}">${entry.status.toUpperCase()}</span>
+      <span class="sync-status-label ${statusClass}">${({missing:'ONLY LEFT',modified:'CHANGED',orphan:'ONLY RIGHT'})[entry.status] || entry.status.toUpperCase()}</span>
       <span class="sync-path">${esc(entry.relativePath)}</span>
       <span class="sync-size">${leftSize}</span>
       <span class="sync-size-right">${rightSize}</span>
@@ -3153,7 +3181,7 @@ window.keepBestDeleteRest = keepBestDeleteRest;
 window.keepBestAllGroups = keepBestAllGroups;
 window.keepPhotoDeleteOthers = keepPhotoDeleteOthers;
 
-// ─── Dashboard PHOTOS strip (in browser view) ───
+// ─── Dashboard PHOTOS strip (in photos view) ───
 function renderDashboardPhotos() {
   const strip = $('dashboard-photos-strip');
   if (!strip || !state.hasPhotos || !state.photoAnalysis) {
@@ -3202,7 +3230,6 @@ function renderDashboardPhotos() {
   // Actions
   html += `<div class="dashboard-photos-actions">`;
   if (pa.totalVisualDuplicateGroups > 0) {
-    html += `<button class="photos-batch-btn" onclick="showView('photos')">Browse Visual Duplicates (F8)</button> `;
     html += `<button class="photos-batch-btn" onclick="keepBestAllGroups()">Script: keep best, delete rest</button>`;
   }
   html += `</div>`;
